@@ -7,7 +7,6 @@
     @update:model-value="(val) => emit('update:abierto', val)"
   >
     <div class="column full-height no-wrap">
-      <!-- Marca superior estilo imagen -->
       <div class="sidebar-brand row items-center no-wrap q-px-lg">
         <div class="brand-logo" aria-hidden="true">
           <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -19,7 +18,6 @@
         <span class="brand-title">HelpDesk TI</span>
       </div>
 
-      <!-- Menú lateral reactivo según el rol autenticado en Pinia -->
       <q-list class="sidebar-nav col q-px-md q-pt-md">
         <template v-for="item in itemsMenu" :key="item.id">
           <q-item-label
@@ -36,12 +34,11 @@
             :active="esRutaActiva(item.ruta)"
             active-class="nav-item--active"
             class="nav-item"
-            @click="irARuta(item)"
+            @click="alHacerClicItem(item)"
           >
             <q-item-section avatar class="nav-item__icon">
               <q-icon :name="item.icono" size="20px" />
             </q-item-section>
-
             <q-item-section class="nav-item__label">
               {{ item.titulo }}
             </q-item-section>
@@ -49,9 +46,8 @@
         </template>
       </q-list>
 
-      <!-- Pie del sidebar -->
       <div class="sidebar-footer q-px-md q-pb-md">
-        <q-item clickable :ripple="false" class="nav-item" @click="emit('cerrarSesion')">
+        <q-item clickable :ripple="false" class="nav-item" @click="alCerrarSesion">
           <q-item-section avatar class="nav-item__icon">
             <q-icon name="logout" size="20px" />
           </q-item-section>
@@ -63,7 +59,8 @@
 </template>
 
 <script setup lang="ts">
-import { useNavigation } from '@/composables/useNavigation';
+import { useQuasar } from 'quasar';
+import { useNavigation, type MenuItem } from '@/composables/useNavigation';
 
 defineProps<{
   abierto: boolean;
@@ -74,7 +71,22 @@ const emit = defineEmits<{
   cerrarSesion: [];
 }>();
 
+const $q = useQuasar();
 const { authStore, itemsMenu, esRutaActiva, irARuta } = useNavigation();
+
+function alHacerClicItem(item: MenuItem): void {
+  irARuta(item);
+  if ($q.screen.lt.md) {
+    emit('update:abierto', false);
+  }
+}
+
+function alCerrarSesion(): void {
+  if ($q.screen.lt.md) {
+    emit('update:abierto', false);
+  }
+  emit('cerrarSesion');
+}
 </script>
 
 <style scoped lang="scss">

@@ -1,13 +1,20 @@
 <template>
-  <q-dialog :model-value="abierto" persistent @update:model-value="(val) => emit('update:abierto', val)">
-    <q-card flat bordered class="dialog-card">
+  <q-dialog
+    :model-value="abierto"
+    persistent
+    :maximized="$q.screen.lt.sm"
+    transition-show="slide-up"
+    transition-hide="slide-down"
+    @update:model-value="(val) => emit('update:abierto', val)"
+  >
+    <q-card flat bordered class="dialog-card" :class="{ 'no-border-radius full-height': $q.screen.lt.sm }">
       <q-card-section class="row items-center justify-between q-pb-sm dialog-header">
         <div>
           <div class="text-subtitle1 text-weight-bold text-dark">
             {{ usuarioEditar ? 'Editar Usuario' : 'Nuevo Usuario' }}
           </div>
           <div class="text-caption muted">
-            {{ usuarioEditar ? 'Actualiza los datos, departamento o rol del usuario.' : 'Registra una nueva cuenta de acceso en el sistema.' }}
+            {{ usuarioEditar ? 'Actualiza los datos o perfil del usuario.' : 'Registra una nueva cuenta de acceso corporativo.' }}
           </div>
         </div>
         <q-btn flat round dense icon="close" color="grey-7" :disable="guardando" @click="emit('update:abierto', false)" />
@@ -15,107 +22,45 @@
 
       <q-card-section class="q-pt-md">
         <q-banner v-if="error" dense rounded class="form-error q-mb-md" role="alert">
-          <template #avatar>
-            <q-icon name="error_outline" color="negative" size="20px" />
-          </template>
+          <template #avatar><q-icon name="error_outline" color="negative" size="20px" /></template>
           {{ error }}
         </q-banner>
 
-        <q-form class="q-gutter-y-md" @submit.prevent="alGuardar">
-          <q-input
-            v-model="nombre"
-            label="Nombre completo"
-            placeholder="Ej. María González"
-            outlined
-            dense
-            maxlength="80"
-            lazy-rules
-            :rules="[(v: string) => !!v?.trim() || 'Ingresa el nombre completo']"
-          />
-
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-sm-7">
-              <q-input
-                v-model="username"
-                label="Nombre de usuario (Login)"
-                placeholder="Ej. maria.gonzalez"
-                outlined
-                dense
-                maxlength="50"
-                lazy-rules
-                :rules="[validarUsernameLogin]"
-              />
+        <q-form @submit.prevent="alGuardar">
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-md-6">
+              <q-input v-model="nombre" label="Nombre completo" placeholder="Ej. María González" outlined dense maxlength="80" lazy-rules :rules="[(v: string) => !!v?.trim() || 'Ingresa el nombre completo']" />
             </div>
-            <div class="col-12 col-sm-5">
-              <q-input
-                v-model="telefono"
-                label="Teléfono"
-                placeholder="0412-2964550"
-                mask="####-#######"
-                outlined
-                dense
-                lazy-rules
-                :rules="[validarTelefonoUsuario]"
-              />
+
+            <div class="col-12 col-md-6">
+              <q-input v-model="username" label="Nombre de usuario (Login)" placeholder="Ej. maria.gonzalez" outlined dense maxlength="50" lazy-rules :rules="[validarUsernameLogin]" />
             </div>
-          </div>
 
-          <q-select
-            v-model="departamento"
-            :options="DEPARTAMENTOS_SISTEMA"
-            label="Departamento"
-            outlined
-            dense
-            options-dense
-            lazy-rules
-            :rules="[(v: string) => !!v || 'Selecciona un departamento']"
-          />
+            <div class="col-12 col-md-6">
+              <q-input v-model="telefono" label="Teléfono" placeholder="0412-2964550" mask="####-#######" outlined dense lazy-rules :rules="[validarTelefonoUsuario]" />
+            </div>
 
-          <q-select
-            v-model="rol"
-            :options="OPCIONES_ROL_SIMULADOR"
-            option-value="valor"
-            option-label="etiqueta"
-            emit-value
-            map-options
-            label="Rol en el sistema"
-            outlined
-            dense
-            options-dense
-          />
+            <div class="col-12 col-md-6">
+              <q-select v-model="departamento" :options="DEPARTAMENTOS_SISTEMA" label="Departamento" outlined dense options-dense lazy-rules :rules="[(v: string) => !!v || 'Selecciona un departamento']" />
+            </div>
 
-          <div class="row items-center justify-between estado-row q-px-sm q-py-xs">
-            <span class="text-body2 text-weight-medium text-dark">Estado de la cuenta</span>
-            <q-toggle
-              v-model="activoToggle"
-              color="primary"
-              :label="activoToggle ? 'Activo' : 'Inactivo'"
-            />
-          </div>
+            <div class="col-12 col-md-6">
+              <q-select v-model="rol" :options="OPCIONES_ROL_SIMULADOR" option-value="valor" option-label="etiqueta" emit-value map-options label="Rol en el sistema" outlined dense options-dense />
+            </div>
 
-          <div class="row justify-end q-gutter-x-sm q-pt-sm">
-            <q-btn
-              flat
-              no-caps
-              color="secondary"
-              label="Cancelar"
-              :disable="guardando"
-              @click="emit('update:abierto', false)"
-            />
-            <q-btn
-              type="submit"
-              unelevated
-              no-caps
-              color="primary"
-              :label="usuarioEditar ? 'Guardar cambios' : 'Crear usuario'"
-              :loading="guardando"
-              :disable="guardando"
-            >
-              <template #loading>
-                <q-spinner-oval size="18px" class="q-mr-sm" />
-                <span>Guardando...</span>
-              </template>
-            </q-btn>
+            <div class="col-12 col-md-6">
+              <div class="row items-center justify-between estado-row q-px-sm q-py-xs full-height">
+                <span class="text-body2 text-weight-medium text-dark">Estado de la cuenta</span>
+                <q-toggle v-model="activoToggle" color="primary" :label="activoToggle ? 'Activo' : 'Inactivo'" />
+              </div>
+            </div>
+
+            <div class="col-12 row justify-end q-gutter-x-sm q-pt-sm">
+              <q-btn flat no-caps color="secondary" label="Cancelar" :disable="guardando" @click="emit('update:abierto', false)" />
+              <q-btn type="submit" unelevated no-caps color="primary" :label="usuarioEditar ? 'Guardar cambios' : 'Crear usuario'" :loading="guardando" :disable="guardando">
+                <template #loading><q-spinner-oval size="18px" class="q-mr-sm" /><span>Guardando...</span></template>
+              </q-btn>
+            </div>
           </div>
         </q-form>
       </q-card-section>
@@ -193,3 +138,22 @@ function alGuardar(): void {
   });
 }
 </script>
+
+<style scoped lang="scss">
+.dialog-card {
+  width: 100vw;
+  max-width: 720px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.dialog-header { border-bottom: 1px solid var(--border); }
+.muted { color: var(--muted); }
+.estado-row { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+.form-error {
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  color: var(--danger);
+  font-size: 0.84rem;
+}
+</style>

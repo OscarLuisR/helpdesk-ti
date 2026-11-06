@@ -1,196 +1,135 @@
 <template>
-  <q-page class="q-pa-lg">
-    <div class="row items-center justify-between q-mb-lg">
-      <div>
-        <h1 class="page-title">Catálogo de Casos (Tipos)</h1>
-        <p class="page-subtitle">
-          Tipificación de incidencias, requerimientos, desarrollos y actividades internas por sub-área.
-        </p>
+  <q-page class="q-pa-md q-pa-sm-lg">
+    <div class="row items-start sm:items-center justify-between q-col-gutter-sm q-mb-lg">
+      <div class="col-12 col-sm-auto">
+        <h1 class="page-title">Catálogo de Servicios</h1>
+        <p class="page-subtitle">Tipificación de servicios e incidentes para la Mesa Técnica y áreas operativas de TI.</p>
       </div>
-      <q-btn
-        unelevated
-        no-caps
-        color="primary"
-        icon="add_circle_outline"
-        label="Nuevo Tipo de Caso"
-        :ripple="false"
-        @click="abrirModalCrear"
-      />
+      <div class="col-12 col-sm-auto">
+        <q-btn color="primary" icon="add" label="Nuevo Servicio" unelevated no-caps class="btn-nuevo full-width sm:auto" @click="abrirModalCrear" />
+      </div>
     </div>
 
-    <q-card flat bordered class="tabla-card">
-      <q-card-section class="row items-center no-wrap q-pa-md toolbar">
-        <div class="col">
-          <div class="row items-baseline q-gutter-x-sm">
-            <span class="text-subtitle1 text-weight-bold text-dark">Tipologías Registradas</span>
-            <span class="text-caption muted">
-              {{ tiposCasoFiltrados.length }}
-              {{ tiposCasoFiltrados.length === 1 ? 'tipo' : 'tipos' }}
-            </span>
-          </div>
-        </div>
-
-        <div class="row items-center no-wrap q-gutter-x-sm">
-          <q-input
-            v-model="busqueda"
-            outlined
-            dense
-            clearable
-            placeholder="Buscar código, caso o área..."
-            class="busqueda-input"
-          >
-            <template #prepend>
-              <q-icon name="search" size="18px" color="grey-6" />
-            </template>
+    <q-card flat bordered class="card">
+      <div class="row items-center q-col-gutter-sm q-mb-md">
+        <div class="col-12 col-sm-6 col-md-3">
+          <q-input v-model="busqueda" dense outlined clearable placeholder="Buscar por servicio...">
+            <template #prepend><q-icon name="search" color="grey-6" /></template>
           </q-input>
-
-          <q-btn
-            outline
-            no-caps
-            dense
-            color="secondary"
-            icon="filter_list"
-            label="Naturaleza"
-            class="btn-filtrar q-px-md"
-            :ripple="false"
-          >
-            <q-badge v-if="naturalezasFiltro.length" floating rounded color="accent" text-color="dark">
-              {{ naturalezasFiltro.length }}
-            </q-badge>
-            <q-menu anchor="bottom right" self="top right">
-              <q-list dense style="min-width: 240px" class="q-pa-sm">
-                <q-item-label header class="text-uppercase text-caption">Naturaleza</q-item-label>
-                <q-item v-for="tipo in TIPOS_TRABAJO_DISPONIBLES" :key="tipo" tag="label" dense>
-                  <q-item-section avatar>
-                    <q-checkbox v-model="naturalezasFiltro" :val="tipo" dense color="primary" />
-                  </q-item-section>
-                  <q-item-section>{{ tipo }}</q-item-section>
-                </q-item>
-                <q-separator class="q-my-xs" />
-                <q-item clickable dense :disable="!naturalezasFiltro.length" @click="limpiarFiltros">
-                  <q-item-section class="text-caption text-primary">Limpiar filtros</q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
-          </q-btn>
         </div>
-      </q-card-section>
+        <div class="col-12 col-sm-6 col-md-3">
+          <q-select v-model="filtroNaturaleza" :options="OPCIONES_FILTRO_NATURALEZA" option-value="valor" option-label="etiqueta" emit-value map-options dense outlined options-dense />
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+          <q-select v-model="filtroSubgerencia" :options="OPCIONES_FILTRO_SUBGERENCIA" option-value="valor" option-label="etiqueta" emit-value map-options dense outlined options-dense />
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+          <q-select v-model="filtroEstado" :options="OPCIONES_FILTRO_ESTADO" dense outlined options-dense />
+        </div>
+      </div>
 
       <q-table
         flat
-        class="tabla-pro-q"
-        :rows="tiposCasoFiltrados"
-        :columns="COLUMNAS_TIPOS_CASO"
+        :rows="serviciosPaginados"
+        :columns="COLUMNAS_CATALOGO"
         row-key="id"
-        :pagination="{ rowsPerPage: 10 }"
-        no-data-label="No hay tipos de caso que mostrar"
-        rows-per-page-label="Filas por página"
+        :grid="$q.screen.lt.md"
+        hide-pagination
+        :pagination="{ rowsPerPage: filasPorPagina }"
+        no-data-label="No se encontraron servicios registrados con los filtros aplicados"
+        class="tabla-pro-q"
       >
-        <template #body-cell-codigo="props">
-          <q-td :props="props">
-            <span class="text-weight-bold text-secondary">{{ props.row.codigo }}</span>
-          </q-td>
+        <template #item="props">
+          <div class="col-12 col-sm-6 q-pa-xs">
+            <q-card flat bordered class="q-pa-sm">
+              <div class="row items-start justify-between no-wrap q-mb-xs">
+                <span class="text-weight-bold text-dark">{{ props.row.nombre }}</span>
+                <span class="chip" :class="props.row.estado === 'Activo' ? 'ok' : 'bad'">{{ props.row.estado }}</span>
+              </div>
+              <div class="row items-center q-gutter-x-xs q-mb-xs">
+                <span class="chip" :class="NATURALEZA_CHIP_CLASS[props.row.naturaleza as NaturalezaTrabajo]">{{ props.row.naturaleza }}</span>
+                <span class="chip" :class="PRIORIDAD_CHIP_CLASS[props.row.prioridadSugerida as PrioridadSugerida]">{{ props.row.prioridadSugerida }}</span>
+              </div>
+              <div class="row items-center justify-between q-mt-sm">
+                <span class="text-caption text-dark"><q-icon name="lan" size="14px" color="primary" class="q-mr-xs" />{{ props.row.subgerenciaDestino }}</span>
+                <div class="row items-center">
+                  <q-btn flat round dense icon="edit" size="sm" color="grey-8" @click="abrirModalEditar(props.row)" />
+                  <q-btn flat round dense icon="delete_outline" size="sm" :color="props.row.estado === 'Activo' ? 'grey-8' : 'positive'" @click="alternarEstado(props.row)" />
+                </div>
+              </div>
+            </q-card>
+          </div>
         </template>
+
         <template #body-cell-nombre="props">
-          <q-td :props="props">
-            <div class="column">
-              <span class="text-weight-bold text-dark">{{ props.row.nombre }}</span>
-              <span class="text-caption muted">
-                {{ props.row.requiereEquipo ? 'Exige identificar equipo afectado' : 'Sin equipo obligatorio' }}
-              </span>
-            </div>
-          </q-td>
+          <q-td :props="props"><span class="text-weight-bold text-dark">{{ props.row.nombre }}</span></q-td>
         </template>
         <template #body-cell-naturaleza="props">
-          <q-td :props="props">
-            <span class="chip" :class="NATURALEZA_CHIP_CLASS[props.row.naturaleza as TipoTrabajo]">
-              <span class="chip__dot" />
-              {{ props.row.naturaleza }}
-            </span>
-          </q-td>
+          <q-td :props="props"><span class="chip" :class="NATURALEZA_CHIP_CLASS[props.row.naturaleza as NaturalezaTrabajo]">{{ props.row.naturaleza }}</span></q-td>
+        </template>
+        <template #body-cell-subgerenciaDestino="props">
+          <q-td :props="props"><span class="text-caption text-weight-medium text-dark"><q-icon name="lan" size="14px" color="primary" class="q-mr-xs" />{{ props.row.subgerenciaDestino }}</span></q-td>
         </template>
         <template #body-cell-prioridadSugerida="props">
-          <q-td :props="props">
-            <span class="chip" :class="PRIORIDAD_CLASS[props.row.prioridadSugerida as Prioridad]">
-              <span class="chip__dot" />
-              {{ props.row.prioridadSugerida }}
-            </span>
-          </q-td>
+          <q-td :props="props"><span class="chip" :class="PRIORIDAD_CHIP_CLASS[props.row.prioridadSugerida as PrioridadSugerida]">{{ props.row.prioridadSugerida }}</span></q-td>
         </template>
-        <template #body-cell-activo="props">
-          <q-td :props="props">
-            <span class="chip" :class="props.row.activo ? 'ok' : 'neutral'">
-              <span class="chip__dot" />
-              {{ props.row.activo ? 'Activo' : 'Inactivo' }}
-            </span>
-          </q-td>
+        <template #body-cell-estado="props">
+          <q-td :props="props"><span class="chip" :class="props.row.estado === 'Activo' ? 'ok' : 'bad'">{{ props.row.estado }}</span></q-td>
         </template>
         <template #body-cell-acciones="props">
           <q-td :props="props" auto-width>
-            <q-btn
-              flat
-              dense
-              no-caps
-              color="primary"
-              icon="edit"
-              label="Editar"
-              :ripple="false"
-              class="q-mr-xs"
-              @click="abrirModalEditar(props.row)"
-            />
-            <q-btn
-              flat
-              dense
-              no-caps
-              :color="props.row.activo ? 'negative' : 'positive'"
-              :label="props.row.activo ? 'Desactivar' : 'Activar'"
-              :ripple="false"
-              @click="cambiarEstado(props.row)"
-            />
+            <q-btn flat round dense icon="edit" size="sm" color="grey-8" @click="abrirModalEditar(props.row)"><q-tooltip>Editar servicio</q-tooltip></q-btn>
+            <q-btn flat round dense icon="delete_outline" size="sm" :color="props.row.estado === 'Activo' ? 'grey-8' : 'positive'" @click="alternarEstado(props.row)"><q-tooltip>{{ props.row.estado === 'Activo' ? 'Desactivar' : 'Activar' }}</q-tooltip></q-btn>
           </q-td>
         </template>
       </q-table>
+
+      <div class="row items-center justify-between tabla-footer q-col-gutter-sm">
+        <q-pagination v-model="paginaActual" :max="totalPaginas" :max-pages="$q.screen.lt.sm ? 3 : 5" direction-links active-design="unelevated" active-color="primary" color="grey-7" size="sm" />
+        <span class="text-caption muted">{{ textoMostrando }}</span>
+      </div>
     </q-card>
 
-    <TipoCasoFormDialog
-      v-model:abierto="modalAbierto"
-      :guardando="guardando"
-      :error="errorFormulario"
-      :tipo-caso-editar="tipoCasoEditando"
-      @guardar="guardarTipoCaso"
-    />
+    <CatalogFormDialog v-model:abierto="modalAbierto" :guardando="guardando" :error="errorFormulario" :servicio-editar="servicioEditando" @guardar="guardarServicio" />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import TipoCasoFormDialog from '@/components/admin/TipoCasoFormDialog.vue';
+import { useQuasar } from 'quasar';
+import CatalogFormDialog from '@/components/admin/CatalogFormDialog.vue';
 import {
-  COLUMNAS_TIPOS_CASO,
+  COLUMNAS_CATALOGO,
   NATURALEZA_CHIP_CLASS,
-  TIPOS_TRABAJO_DISPONIBLES,
-  useCatalogoCasosCrud,
-} from '@/composables/useCatalogoCasosCrud';
-import { PRIORIDAD_CLASS } from '@/composables/useTickets';
-import type { Prioridad, TipoTrabajo } from '@/models/types';
+  OPCIONES_FILTRO_ESTADO,
+  OPCIONES_FILTRO_NATURALEZA,
+  OPCIONES_FILTRO_SUBGERENCIA,
+  PRIORIDAD_CHIP_CLASS,
+  useCatalogView,
+} from '@/composables/useCatalogView';
+import type { NaturalezaTrabajo, PrioridadSugerida } from '@/stores/useCatalogStore';
 
+const $q = useQuasar();
 const {
   busqueda,
-  naturalezasFiltro,
+  filtroNaturaleza,
+  filtroSubgerencia,
+  filtroEstado,
+  paginaActual,
+  filasPorPagina,
+  totalPaginas,
+  serviciosPaginados,
+  textoMostrando,
   modalAbierto,
   guardando,
   errorFormulario,
-  tipoCasoEditando,
-  tiposCasoFiltrados,
-  limpiarFiltros,
+  servicioEditando,
   abrirModalCrear,
   abrirModalEditar,
-  guardarTipoCaso,
-  cambiarEstado,
-} = useCatalogoCasosCrud();
+  guardarServicio,
+  alternarEstado,
+} = useCatalogView();
 </script>
 
 <style scoped lang="scss">
-.toolbar { border-bottom: 1px solid var(--border); }
-.busqueda-input { width: 260px; }
-.btn-filtrar { border-color: var(--border); }
+.btn-nuevo { border-radius: 8px; padding: 6px 16px; font-weight: 600; }
 </style>
