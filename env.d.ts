@@ -12,4 +12,7 @@
  *   readonly MY_OTHER_VAR: string;
  * }
  */
-interface ImportMetaEnv {}
+interface ImportMetaEnv {
+  /** URL base del backend, p. ej. http://localhost:3000/api */
+  readonly VITE_API_URL?: string;
+}

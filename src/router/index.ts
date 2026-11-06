@@ -7,17 +7,9 @@ import {
 } from 'vue-router';
 
 import routes from './routes';
+import { useAuthStore } from '@/stores/authStore';
 
-/*
- * If not building with SSR mode, you can
- * directly export the Router instantiation;
- *
- * The function below can be async too; either use
- * async/await or return a Promise which resolves
- * with the Router instance.
- */
-
-export default defineRouter((/* { store, ssrContext } */) => {
+export default defineRouter(({ store }) => {
   const createHistory = import.meta.env.QUASAR_SERVER
     ? createMemoryHistory
     : import.meta.env.QUASAR_VUE_ROUTER_MODE === 'history'
@@ -27,11 +19,19 @@ export default defineRouter((/* { store, ssrContext } */) => {
   const Router = createRouter({
     scrollBehavior: () => ({ left: 0, top: 0 }),
     routes,
-
-    // Leave this as is and make changes in quasar.conf.js instead!
-    // quasar.conf.js -> build -> vueRouterMode
-    // quasar.conf.js -> build -> publicPath
     history: createHistory(import.meta.env.QUASAR_VUE_ROUTER_BASE),
+  });
+
+  // Navigation Guard: rutas protegidas requieren sesión activa en authStore.
+  Router.beforeEach((to) => {
+    const auth = useAuthStore(store);
+    if (to.matched.some((r) => r.meta.requiresAuth) && !auth.isAuthenticated) {
+      return '/';
+    }
+    if (to.path === '/' && auth.isAuthenticated) {
+      return '/bandeja';
+    }
+    return true;
   });
 
   return Router;

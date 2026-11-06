@@ -1,5 +1,5 @@
 <template>
-  <div class="fullscreen bg-blue text-white text-center q-pa-md flex flex-center">
+  <div class="fullscreen text-white text-center q-pa-md flex flex-center not-found">
     <div>
       <div style="font-size: 30vh">404</div>
 
@@ -7,13 +7,19 @@
 
       <q-btn
         class="q-mt-xl"
-        color="white"
-        text-color="blue"
+        color="primary"
         unelevated
         to="/"
         label="Go Home"
         no-caps
+        :ripple="false"
       />
     </div>
   </div>
 </template>
+
+<style scoped lang="scss">
+.not-found {
+  background: linear-gradient(135deg, #0f1e33 0%, #1e3a5f 100%);
+}
+</style>

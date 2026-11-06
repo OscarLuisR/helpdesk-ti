@@ -25,7 +25,7 @@ export default defineConfig((/* ctx */) => {
       // 'themify',
       // 'line-awesome',
 
-      'roboto-font', // optional, you are not bound to it
+      // 'roboto-font' no se usa: la tipografía del sistema es Inter (ver app.scss)
       'material-icons', // optional, you are not bound to it
     ],
 
@@ -99,7 +99,7 @@ export default defineConfig((/* ctx */) => {
       // directives: [],
 
       // Quasar plugins
-      plugins: [],
+      plugins: ['Notify'],
     },
 
     // animations: 'all', // --- includes all animations

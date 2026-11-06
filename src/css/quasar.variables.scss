@@ -1,19 +1,16 @@
-$primary   : #0F172A;
-$secondary : #64748B;
-$accent    : #3B82F6;
+// Slate Teal - variables de Quasar
+$primary:   #0f766e;
+$secondary: #1e3a5f;
+$accent:    #f59e0b;
 
-$dark      : #1E293B;
-$dark-page : #0F172A;
+$dark:      #0f1e33;
+$dark-page: #0a1424;
 
-$positive  : #10B981;
-$negative  : #EF4444;
-$info      : #0EA5E9;
-$warning   : #F59E0B;
+$positive:  #16a34a;
+$negative:  #dc2626;
+$info:      #0284c7;
+$warning:   #d97706;
 
-$typography-font-family : 'Inter', -apple-system, sans-serif !default;
-$generic-border-radius  : 12px;
-$button-border-radius   : 8px;
-
-$elevation-umbra    : rgba(15, 23, 42, 0.04);
-$elevation-penumbra : rgba(15, 23, 42, 0.02);
-$elevation-ambient  : rgba(15, 23, 42, 0.01);
+$typography-font-family: 'Inter', sans-serif;
+$button-border-radius: 10px;
+$generic-border-radius: 10px;
