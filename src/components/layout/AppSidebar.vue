@@ -75,7 +75,7 @@ const $q = useQuasar();
 const { authStore, itemsMenu, esRutaActiva, irARuta } = useNavigation();
 
 function alHacerClicItem(item: MenuItem): void {
-  irARuta(item);
+  void irARuta(item);
   if ($q.screen.lt.md) {
     emit('update:abierto', false);
   }

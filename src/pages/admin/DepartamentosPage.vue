@@ -1,12 +1,12 @@
 <template>
   <q-page class="q-pa-md q-pa-sm-lg">
-    <div class="row items-start sm:items-center justify-between q-col-gutter-sm q-mb-lg">
+    <div class="row items-center justify-between q-gutter-y-sm q-mb-lg">
       <div class="col-12 col-sm-auto">
         <h1 class="page-title">Departamentos</h1>
         <p class="page-subtitle">Gestión de áreas corporativas solicitantes y sub-gerencias técnicas de TI.</p>
       </div>
       <div class="col-12 col-sm-auto">
-        <q-btn color="primary" icon="add" label="Nuevo Departamento" unelevated no-caps class="btn-nuevo full-width sm:auto" @click="abrirModalCrear" />
+        <q-btn color="primary" icon="add" label="Nuevo Departamento" unelevated no-caps class="btn-nuevo" :class="{ 'full-width': $q.screen.xs }" @click="abrirModalCrear" />
       </div>
     </div>
 

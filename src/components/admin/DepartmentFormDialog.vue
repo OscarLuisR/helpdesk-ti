@@ -81,8 +81,10 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { useQuasar } from 'quasar';
 import type { Department, DepartmentFormPayload } from '@/stores/useDepartmentsStore';
 
+const $q = useQuasar();
 const props = defineProps<{
   abierto: boolean;
   guardando: boolean;

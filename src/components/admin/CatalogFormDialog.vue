@@ -105,6 +105,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { useQuasar } from 'quasar';
 import {
   OPCIONES_NATURALEZA,
   OPCIONES_PRIORIDAD,
@@ -116,6 +117,7 @@ import {
   type SubgerenciaDestino,
 } from '@/stores/useCatalogStore';
 
+const $q = useQuasar();
 const props = defineProps<{
   abierto: boolean;
   guardando: boolean;

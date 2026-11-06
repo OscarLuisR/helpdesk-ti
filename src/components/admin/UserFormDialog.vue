@@ -70,6 +70,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { useQuasar } from 'quasar';
 import {
   formatearTelefonoMask,
   validarTelefonoUsuario,
@@ -79,6 +80,7 @@ import { OPCIONES_ROL_SIMULADOR } from '@/models/auth';
 import type { RolUsuario } from '@/models/types';
 import { DEPARTAMENTOS_SISTEMA, type User, type UserFormPayload } from '@/stores/useUsersStore';
 
+const $q = useQuasar();
 const props = defineProps<{
   abierto: boolean;
   guardando: boolean;
