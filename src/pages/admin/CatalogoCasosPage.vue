@@ -12,30 +12,31 @@
 
     <q-card flat bordered class="card">
       <div class="row items-center q-col-gutter-sm q-mb-md">
-        <div class="col-12 col-sm-6 col-md-3">
-          <q-input v-model="busqueda" dense outlined clearable placeholder="Buscar por servicio...">
+        <div class="col-12 col-sm-6 col-md-4">
+          <q-input v-model="busqueda" debounce="300" dense outlined clearable placeholder="Buscar por servicio, departamento o prioridad...">
             <template #prepend><q-icon name="search" color="grey-6" /></template>
           </q-input>
         </div>
         <div class="col-12 col-sm-6 col-md-3">
-          <q-select v-model="filtroNaturaleza" :options="OPCIONES_FILTRO_NATURALEZA" option-value="valor" option-label="etiqueta" emit-value map-options dense outlined options-dense />
+          <q-select v-model="filtroDepartamento" :options="opcionesFiltroDepartamento" option-value="valor" option-label="etiqueta" emit-value map-options dense outlined options-dense />
         </div>
         <div class="col-12 col-sm-6 col-md-3">
-          <q-select v-model="filtroSubgerencia" :options="OPCIONES_FILTRO_SUBGERENCIA" option-value="valor" option-label="etiqueta" emit-value map-options dense outlined options-dense />
+          <q-select v-model="filtroPrioridad" :options="opcionesFiltroPrioridad" option-value="valor" option-label="etiqueta" emit-value map-options dense outlined options-dense />
         </div>
-        <div class="col-12 col-sm-6 col-md-3">
+        <div class="col-12 col-sm-6 col-md-2">
           <q-select v-model="filtroEstado" :options="OPCIONES_FILTRO_ESTADO" dense outlined options-dense />
         </div>
       </div>
 
       <q-table
         flat
-        :rows="serviciosPaginados"
+        v-model:pagination="paginacion"
+        :rows="serviciosFiltrados"
         :columns="COLUMNAS_CATALOGO"
         row-key="id"
+        :loading="cargando"
         :grid="$q.screen.lt.md"
         hide-pagination
-        :pagination="{ rowsPerPage: filasPorPagina }"
         no-data-label="No se encontraron servicios registrados con los filtros aplicados"
         class="tabla-pro-q"
       >
@@ -47,11 +48,11 @@
                 <span class="chip" :class="props.row.estado === 'Activo' ? 'ok' : 'bad'">{{ props.row.estado }}</span>
               </div>
               <div class="row items-center q-gutter-x-xs q-mb-xs">
-                <span class="chip" :class="NATURALEZA_CHIP_CLASS[props.row.naturaleza as NaturalezaTrabajo]">{{ props.row.naturaleza }}</span>
-                <span class="chip" :class="PRIORIDAD_CHIP_CLASS[props.row.prioridadSugerida as PrioridadSugerida]">{{ props.row.prioridadSugerida }}</span>
+                <span v-if="props.row.codigo_departamento" class="chip brand">{{ props.row.codigo_departamento }}</span>
+                <span class="chip" :class="claseChipPrioridad(props.row.prioridad)">{{ props.row.prioridad }}</span>
               </div>
               <div class="row items-center justify-between q-mt-sm">
-                <span class="text-caption text-dark"><q-icon name="lan" size="14px" color="primary" class="q-mr-xs" />{{ props.row.subgerenciaDestino }}</span>
+                <span class="text-caption text-dark"><q-icon name="lan" size="14px" color="primary" class="q-mr-xs" />{{ props.row.departamento }}</span>
                 <div class="row items-center">
                   <q-btn flat round dense icon="edit" size="sm" color="grey-8" @click="abrirModalEditar(props.row)" />
                   <q-btn flat round dense icon="delete_outline" size="sm" :color="props.row.estado === 'Activo' ? 'grey-8' : 'positive'" @click="alternarEstado(props.row)" />
@@ -64,14 +65,16 @@
         <template #body-cell-nombre="props">
           <q-td :props="props"><span class="text-weight-bold text-dark">{{ props.row.nombre }}</span></q-td>
         </template>
-        <template #body-cell-naturaleza="props">
-          <q-td :props="props"><span class="chip" :class="NATURALEZA_CHIP_CLASS[props.row.naturaleza as NaturalezaTrabajo]">{{ props.row.naturaleza }}</span></q-td>
+        <template #body-cell-departamento="props">
+          <q-td :props="props">
+            <div class="row items-center no-wrap q-gutter-x-xs">
+              <span v-if="props.row.codigo_departamento" class="chip brand">{{ props.row.codigo_departamento }}</span>
+              <span class="text-caption text-weight-medium text-dark">{{ props.row.departamento }}</span>
+            </div>
+          </q-td>
         </template>
-        <template #body-cell-subgerenciaDestino="props">
-          <q-td :props="props"><span class="text-caption text-weight-medium text-dark"><q-icon name="lan" size="14px" color="primary" class="q-mr-xs" />{{ props.row.subgerenciaDestino }}</span></q-td>
-        </template>
-        <template #body-cell-prioridadSugerida="props">
-          <q-td :props="props"><span class="chip" :class="PRIORIDAD_CHIP_CLASS[props.row.prioridadSugerida as PrioridadSugerida]">{{ props.row.prioridadSugerida }}</span></q-td>
+        <template #body-cell-prioridad="props">
+          <q-td :props="props"><span class="chip" :class="claseChipPrioridad(props.row.prioridad)">{{ props.row.prioridad }}</span></q-td>
         </template>
         <template #body-cell-estado="props">
           <q-td :props="props"><span class="chip" :class="props.row.estado === 'Activo' ? 'ok' : 'bad'">{{ props.row.estado }}</span></q-td>
@@ -90,39 +93,57 @@
       </div>
     </q-card>
 
-    <CatalogFormDialog v-model:abierto="modalAbierto" :guardando="guardando" :error="errorFormulario" :servicio-editar="servicioEditando" @guardar="guardarServicio" />
+    <CatalogFormDialog
+      v-model:abierto="modalAbierto"
+      :guardando="guardando"
+      :error="errorFormulario"
+      :servicio-editar="servicioEditando"
+      :departamentos="departamentosCatalogo"
+      :prioridades="prioridadesCatalogo"
+      @guardar="guardarServicio"
+    />
+    <ConfirmarAccionDialog
+      :abierto="confirmacionAbierta"
+      v-bind="confirmacionOpciones"
+      @responder="responderConfirmacion"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { useQuasar } from 'quasar';
 import CatalogFormDialog from '@/components/admin/CatalogFormDialog.vue';
+import ConfirmarAccionDialog from '@/components/common/ConfirmarAccionDialog.vue';
 import {
   COLUMNAS_CATALOGO,
-  NATURALEZA_CHIP_CLASS,
   OPCIONES_FILTRO_ESTADO,
-  OPCIONES_FILTRO_NATURALEZA,
-  OPCIONES_FILTRO_SUBGERENCIA,
-  PRIORIDAD_CHIP_CLASS,
+  claseChipPrioridad,
   useCatalogView,
 } from '@/composables/useCatalogView';
-import type { NaturalezaTrabajo, PrioridadSugerida } from '@/stores/useCatalogStore';
 
 const $q = useQuasar();
 const {
+  cargando,
+  departamentosCatalogo,
+  prioridadesCatalogo,
+  opcionesFiltroDepartamento,
+  opcionesFiltroPrioridad,
   busqueda,
-  filtroNaturaleza,
-  filtroSubgerencia,
+  filtroDepartamento,
+  filtroPrioridad,
   filtroEstado,
+  paginacion,
   paginaActual,
-  filasPorPagina,
   totalPaginas,
-  serviciosPaginados,
+  serviciosFiltrados,
   textoMostrando,
   modalAbierto,
   guardando,
   errorFormulario,
   servicioEditando,
+  confirmacionAbierta,
+  confirmacionOpciones,
+  responderConfirmacion,
   abrirModalCrear,
   abrirModalEditar,
   guardarServicio,

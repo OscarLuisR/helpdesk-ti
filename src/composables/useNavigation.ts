@@ -13,14 +13,20 @@ export interface MenuItem {
   seccion?: string;
 }
 
-/** Opciones maestras compartidas entre ADMINISTRADOR y MESA_TECNICA. */
+/** Opciones maestras compartidas entre ADMINISTRADOR y MESA_TECNICA (en el orden de los módulos). */
 export const OPCIONES_ADMINISTRATIVAS: readonly MenuItem[] = [
   {
-    id: 'admin-usuarios',
-    titulo: 'Usuarios y Roles',
-    icono: 'manage_accounts',
-    ruta: '/admin/usuarios',
+    id: 'admin-roles',
+    titulo: 'Roles',
+    icono: 'admin_panel_settings',
+    ruta: '/admin/roles',
     seccion: 'Administración',
+  },
+  {
+    id: 'admin-tipo-departamentos',
+    titulo: 'Tipo Departamentos',
+    icono: 'account_tree',
+    ruta: '/admin/tipo-departamentos',
   },
   {
     id: 'admin-departamentos',
@@ -29,16 +35,22 @@ export const OPCIONES_ADMINISTRATIVAS: readonly MenuItem[] = [
     ruta: '/admin/departamentos',
   },
   {
-    id: 'admin-catalogo',
-    titulo: 'Catálogo de Servicios',
-    icono: 'category',
-    ruta: '/admin/catalogo',
+    id: 'admin-usuarios',
+    titulo: 'Usuarios',
+    icono: 'manage_accounts',
+    ruta: '/admin/usuarios',
   },
   {
     id: 'admin-sla',
-    titulo: 'Configuración SLA',
+    titulo: 'Prioridades (SLA)',
     icono: 'timer',
     ruta: '/admin/sla',
+  },
+  {
+    id: 'admin-catalogo',
+    titulo: 'Catálogo de Incidencias',
+    icono: 'category',
+    ruta: '/admin/catalogo',
   },
 ];
 
@@ -133,7 +145,23 @@ export const MENU_POR_ROL: Record<RolUsuario, readonly MenuItem[]> = {
     },
   ],
 
-  ADMINISTRADOR: [...OPCIONES_ADMINISTRATIVAS],
+  // 🛡️ [FASE 2.3 - TICKETS] Administrador también tiene acceso directo a creación y recepción de tickets
+  ADMINISTRADOR: [
+    {
+      id: 'admin-tickets-nuevo',
+      titulo: 'Nuevo Ticket',
+      icono: 'add_box',
+      ruta: '/tickets/nuevo',
+      seccion: 'Operación Tickets',
+    },
+    {
+      id: 'admin-tickets-recepcion',
+      titulo: 'Recepción Global',
+      icono: 'inbox',
+      ruta: '/tickets/recepcion',
+    },
+    ...OPCIONES_ADMINISTRATIVAS,
+  ],
 };
 
 export function useNavigation() {

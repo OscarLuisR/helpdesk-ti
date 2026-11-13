@@ -1,34 +1,35 @@
-import { computed, ref, watch } from 'vue';
-import { useQuasar, type QTableColumn } from 'quasar';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useQuasar, type QTableColumn, type QTableProps } from 'quasar';
 import { PATRON_NOMBRE_USUARIO } from '@/composables/useAuth';
-import { OPCIONES_ROL_SIMULADOR } from '@/models/auth';
-import type { RolUsuario } from '@/models/types';
-import { useUsersStore, type EstadoUsuario, type User, type UserFormPayload } from '@/stores/useUsersStore';
+import { opcionesCambioEstado, useConfirmacion } from '@/composables/useConfirmacion';
+import { useDepartmentsStore, type Department } from '@/stores/useDepartmentsStore';
+import { useRolesStore, type RolItem } from '@/stores/useRolesStore';
+import {
+  useUsersStore,
+  type EstadoUsuario,
+  type User,
+  type UserFormPayload,
+} from '@/stores/useUsersStore';
 
 export const COLUMNAS_USUARIOS: QTableColumn<User>[] = [
   { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true },
-  { name: 'nombre', label: 'Nombre', field: 'nombre', align: 'left', sortable: true },
-  { name: 'username', label: 'Usuario', field: 'username', align: 'left', sortable: true },
+  { name: 'nombre', label: 'Nombre', field: 'nombre_completo', align: 'left', sortable: true },
+  { name: 'username', label: 'Usuario', field: 'nick', align: 'left', sortable: true },
   { name: 'telefono', label: 'Teléfono', field: 'telefono', align: 'left' },
   { name: 'departamento', label: 'Departamento', field: 'departamento', align: 'left', sortable: true },
   { name: 'rol', label: 'Rol', field: 'rol', align: 'left', sortable: true },
   { name: 'estado', label: 'Estado', field: 'estado', align: 'left', sortable: true },
-  { name: 'acciones', label: 'Acciones', field: 'id', align: 'left' },
+  { name: 'acciones', label: 'Acciones', field: 'id', align: 'right' },
 ];
 
 export const OPCIONES_FILTRO_ESTADO: readonly string[] = ['Todos', 'Activo', 'Inactivo'];
 
 export interface OpcionFiltroRol {
-  valor: 'TODOS' | RolUsuario;
+  valor: number | 'TODOS';
   etiqueta: string;
 }
 
-export const OPCIONES_FILTRO_ROL: readonly OpcionFiltroRol[] = [
-  { valor: 'TODOS', etiqueta: 'Todos los roles' },
-  ...OPCIONES_ROL_SIMULADOR,
-];
-
-export const ROL_CHIP_CLASS: Record<RolUsuario, string> = {
+const ROL_CHIP_CLASS: Record<string, string> = {
   ADMINISTRADOR: 'bad',
   GERENTE_GENERAL: 'brand',
   MESA_TECNICA: 'info',
@@ -37,8 +38,8 @@ export const ROL_CHIP_CLASS: Record<RolUsuario, string> = {
   USUARIO: 'ok',
 };
 
-export function etiquetaRol(rol: RolUsuario): string {
-  return OPCIONES_ROL_SIMULADOR.find((op) => op.valor === rol)?.etiqueta ?? rol;
+export function claseChipRol(codigoRol: string): string {
+  return ROL_CHIP_CLASS[codigoRol.trim().toUpperCase()] ?? 'neutral';
 }
 
 export function estadoChipClass(estado: EstadoUsuario): string {
@@ -48,8 +49,9 @@ export function estadoChipClass(estado: EstadoUsuario): string {
 export function validarUsernameLogin(valor: string): true | string {
   const limpio = (valor ?? '').trim();
   if (!limpio) return 'Ingresa el nombre de usuario (login)';
+  if (limpio.length > 25) return 'Máximo 25 caracteres';
   if (!PATRON_NOMBRE_USUARIO.test(limpio)) {
-    return 'Solo letras, números, punto o guion (3 a 50 caracteres)';
+    return 'Solo letras, números, punto o guion (3 a 25 caracteres)';
   }
   return true;
 }
@@ -71,15 +73,45 @@ export function validarTelefonoUsuario(valor: string): true | string {
   return true;
 }
 
+const PATRON_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function validarEmailUsuario(valor: string): true | string {
+  const limpio = (valor ?? '').trim();
+  if (!limpio) return true;
+  if (limpio.length > 150) return 'Máximo 150 caracteres';
+  if (!PATRON_EMAIL.test(limpio)) return 'Ingresa un correo electrónico válido';
+  return true;
+}
+
 export function useUsersView() {
   const usersStore = useUsersStore();
+  const rolesStore = useRolesStore();
+  const departmentsStore = useDepartmentsStore();
   const $q = useQuasar();
+  const {
+    confirmacionAbierta,
+    confirmacionOpciones,
+    solicitarConfirmacion,
+    responderConfirmacion,
+  } = useConfirmacion();
 
   const busqueda = ref('');
   const filtroEstado = ref<string>('Todos');
-  const filtroRol = ref<'TODOS' | RolUsuario>('TODOS');
-  const paginaActual = ref(1);
+  const filtroRol = ref<number | 'TODOS'>('TODOS');
   const filasPorPagina = 8;
+  const paginacion = ref<NonNullable<QTableProps['pagination']>>({
+    sortBy: null,
+    descending: false,
+    page: 1,
+    rowsPerPage: filasPorPagina,
+  });
+
+  const paginaActual = computed({
+    get: () => paginacion.value.page ?? 1,
+    set: (val: number) => {
+      paginacion.value = { ...paginacion.value, page: val };
+    },
+  });
 
   const modalAbierto = ref(false);
   const guardando = ref(false);
@@ -91,16 +123,31 @@ export function useUsersView() {
   const errorReset = ref<string | null>(null);
   const usuarioReset = ref<User | null>(null);
 
+  const cargando = computed(() => usersStore.cargando);
+  const rolesCatalogo = computed<RolItem[]>(() => rolesStore.roles);
+  const departamentosCatalogo = computed<Department[]>(() => departmentsStore.departments);
+
+  const opcionesFiltroRol = computed<OpcionFiltroRol[]>(() => [
+    { valor: 'TODOS', etiqueta: 'Todos los roles' },
+    ...rolesStore.roles.map((r) => ({ valor: r.id, etiqueta: r.nombre })),
+  ]);
+
   const usuariosFiltrados = computed<User[]>(() => {
     const q = (busqueda.value ?? '').trim().toLowerCase();
     return usersStore.users.filter((u) => {
       const coincideEstado = filtroEstado.value === 'Todos' || u.estado === filtroEstado.value;
-      const coincideRol = filtroRol.value === 'TODOS' || u.rol === filtroRol.value;
+      const coincideRol = filtroRol.value === 'TODOS' || u.id_rol === filtroRol.value;
       const coincideTexto =
         !q ||
-        [String(u.id), u.nombre, u.username, u.telefono, u.departamento, etiquetaRol(u.rol)].some((c) =>
-          c.toLowerCase().includes(q),
-        );
+        [
+          String(u.id),
+          u.nombre_completo,
+          u.nick,
+          u.telefono,
+          u.departamento,
+          u.rol,
+          u.email ?? '',
+        ].some((c) => c.toLowerCase().includes(q));
       return coincideEstado && coincideRol && coincideTexto;
     });
   });
@@ -109,15 +156,33 @@ export function useUsersView() {
     paginaActual.value = 1;
   });
 
+  onMounted(async () => {
+    try {
+      await Promise.all([
+        usersStore.cargarUsuarios(),
+        rolesStore.cargarRoles(),
+        departmentsStore.cargarDepartamentos(),
+      ]);
+    } catch (err) {
+      $q.notify({
+        type: 'negative',
+        message: err instanceof Error ? err.message : 'No fue posible cargar los usuarios.',
+        position: 'top-right',
+        timeout: 3000,
+      });
+    }
+  });
+
   const totalResultados = computed(() => usuariosFiltrados.value.length);
 
   const totalPaginas = computed(() =>
     Math.max(1, Math.ceil(totalResultados.value / filasPorPagina)),
   );
 
-  const usuariosPaginados = computed<User[]>(() => {
-    const inicio = (paginaActual.value - 1) * filasPorPagina;
-    return usuariosFiltrados.value.slice(inicio, inicio + filasPorPagina);
+  watch(totalPaginas, (nuevoMax) => {
+    if (paginaActual.value > nuevoMax) {
+      paginaActual.value = nuevoMax;
+    }
   });
 
   const textoMostrando = computed(() => {
@@ -147,10 +212,18 @@ export function useUsersView() {
     try {
       if (usuarioEditando.value) {
         await usersStore.actualizarUsuario(usuarioEditando.value.id, payload);
-        $q.notify({ type: 'positive', message: 'Usuario actualizado correctamente.', position: 'top-right' });
+        $q.notify({
+          type: 'positive',
+          message: 'Usuario actualizado correctamente.',
+          position: 'top-right',
+        });
       } else {
         await usersStore.agregarUsuario(payload);
-        $q.notify({ type: 'positive', message: 'Usuario creado correctamente.', position: 'top-right' });
+        $q.notify({
+          type: 'positive',
+          message: 'Usuario creado correctamente (clave temporal inicial: 123456).',
+          position: 'top-right',
+        });
       }
       modalAbierto.value = false;
       return true;
@@ -163,14 +236,31 @@ export function useUsersView() {
     }
   }
 
-  function alternarEstado(usuario: User): void {
-    void usersStore.eliminarUsuario(usuario.id);
-    const accion = usuario.estado === 'Activo' ? 'activado' : 'desactivado';
-    $q.notify({
-      type: 'info',
-      message: `Usuario @${usuario.username} ${accion}.`,
-      position: 'top-right',
-    });
+  async function alternarEstado(usuario: User): Promise<void> {
+    const confirmado = await solicitarConfirmacion(
+      opcionesCambioEstado(
+        'el usuario',
+        `${usuario.nombre_completo} (${usuario.nick})`,
+        usuario.is_activo,
+      ),
+    );
+    if (!confirmado) return;
+
+    try {
+      const nuevoEstado = await usersStore.alternarEstadoUsuario(usuario);
+      const accion = nuevoEstado === 'Activo' ? 'activado' : 'desactivado';
+      $q.notify({
+        type: 'info',
+        message: `Usuario ${usuario.nick} ${accion}.`,
+        position: 'top-right',
+      });
+    } catch (err) {
+      $q.notify({
+        type: 'negative',
+        message: err instanceof Error ? err.message : 'No se pudo cambiar el estado del usuario.',
+        position: 'top-right',
+      });
+    }
   }
 
   function abrirModalReset(usuario: User): void {
@@ -179,16 +269,16 @@ export function useUsersView() {
     modalResetAbierto.value = true;
   }
 
-  async function confirmarResetPassword(nuevaPassword: string): Promise<boolean> {
+  async function confirmarResetPassword(): Promise<boolean> {
     if (guardandoReset.value || !usuarioReset.value) return false;
     errorReset.value = null;
     guardandoReset.value = true;
 
     try {
-      await usersStore.resetearPasswordUsuario(usuarioReset.value.id, nuevaPassword);
+      await usersStore.resetearPasswordUsuario(usuarioReset.value.id);
       $q.notify({
         type: 'positive',
-        message: `Contraseña de @${usuarioReset.value.username} restablecida correctamente.`,
+        message: `Contraseña de ${usuarioReset.value.nick} restablecida a 123456.`,
         position: 'top-right',
       });
       modalResetAbierto.value = false;
@@ -203,13 +293,17 @@ export function useUsersView() {
   }
 
   return {
+    cargando,
+    rolesCatalogo,
+    departamentosCatalogo,
+    opcionesFiltroRol,
     busqueda,
     filtroEstado,
     filtroRol,
+    paginacion,
     paginaActual,
-    filasPorPagina,
     totalPaginas,
-    usuariosPaginados,
+    usuariosFiltrados,
     textoMostrando,
     modalAbierto,
     guardando,
@@ -219,6 +313,9 @@ export function useUsersView() {
     guardandoReset,
     errorReset,
     usuarioReset,
+    confirmacionAbierta,
+    confirmacionOpciones,
+    responderConfirmacion,
     abrirModalCrear,
     abrirModalEditar,
     guardarUsuario,
@@ -227,4 +324,3 @@ export function useUsersView() {
     confirmarResetPassword,
   };
 }
-

@@ -14,7 +14,7 @@
             {{ departamentoEditar ? 'Editar Departamento' : 'Nuevo Departamento' }}
           </div>
           <div class="text-caption muted">
-            {{ departamentoEditar ? 'Actualiza los datos del área solicitante.' : 'Registra un departamento corporativo o área de TI.' }}
+            {{ departamentoEditar ? 'Actualiza los datos del departamento.' : 'Registra un departamento corporativo o área de TI.' }}
           </div>
         </div>
         <q-btn flat round dense icon="close" color="grey-7" :disable="guardando" @click="emit('update:abierto', false)" />
@@ -29,34 +29,94 @@
         <q-form @submit.prevent="alGuardar">
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-4">
-              <q-input v-model="codigo" label="Código" placeholder="Ej. TI-SOP" outlined dense maxlength="10" lazy-rules :rules="[(v: string) => !!v?.trim() || 'Ingresa el código']" />
+              <q-input
+                v-model="codigo"
+                label="Código"
+                placeholder="Ej. TI-SOP"
+                outlined
+                dense
+                maxlength="25"
+                lazy-rules
+                :rules="[
+                  (v: string) => !!v?.trim() || 'Ingresa el código',
+                  (v: string) => (v?.trim().length ?? 0) <= 25 || 'Máximo 25 caracteres',
+                ]"
+              />
             </div>
             <div class="col-12 col-md-8">
-              <q-input v-model="nombre" label="Nombre del departamento" placeholder="Ej. Soporte Técnico" outlined dense maxlength="80" lazy-rules :rules="[(v: string) => !!v?.trim() || 'Ingresa el nombre']" />
+              <q-input
+                v-model="nombre"
+                label="Nombre del departamento"
+                placeholder="Ej. Soporte Técnico"
+                outlined
+                dense
+                maxlength="50"
+                lazy-rules
+                :rules="[
+                  (v: string) => !!v?.trim() || 'Ingresa el nombre',
+                  (v: string) => (v?.trim().length ?? 0) <= 50 || 'Máximo 50 caracteres',
+                ]"
+              />
             </div>
 
             <div class="col-12 col-md-6">
-              <q-input v-model="responsable" label="Responsable" placeholder="Ej. Patricia Vega" outlined dense maxlength="80" lazy-rules :rules="[(v: string) => !!v?.trim() || 'Ingresa el responsable']" />
-            </div>
-            <div class="col-12 col-md-6">
-              <q-input v-model="telefono" label="Teléfono del Responsable" placeholder="0414-3021144" outlined dense maxlength="15" lazy-rules :rules="[(v: string) => !!v?.trim() || 'Teléfono requerido']" />
-            </div>
-
-            <div class="col-12">
-              <q-input v-model="ubicacion" label="Ubicación física / Sede (Opcional)" placeholder="Ej. Piso 3" outlined dense maxlength="100" />
-            </div>
-
-            <div class="col-12 col-md-6">
-              <div class="row items-center justify-between toggle-row q-px-md q-py-xs full-height">
-                <div>
-                  <div class="text-body2 text-weight-medium text-dark">Sub-Gerencia de TI</div>
-                  <div class="text-caption muted">Diferencia de áreas usuarias</div>
-                </div>
-                <q-toggle v-model="esSubgerenciaTI" color="primary" />
-              </div>
+              <q-select
+                v-model="idTipoDepartamento"
+                :options="tiposDepartamento"
+                option-value="id"
+                option-label="nombre"
+                emit-value
+                map-options
+                label="Tipo de departamento"
+                outlined
+                dense
+                options-dense
+                lazy-rules
+                :rules="[(v: number | null) => (typeof v === 'number' && v > 0) || 'Selecciona el tipo de departamento']"
+              />
             </div>
 
             <div class="col-12 col-md-6">
+              <q-input
+                v-model="telefono"
+                label="Teléfono"
+                placeholder="0412-1234567"
+                mask="####-#######"
+                outlined
+                dense
+                lazy-rules
+                :rules="[validarTelefono]"
+              />
+            </div>
+
+            <div class="col-12 col-md-6">
+              <q-input
+                v-model="responsable"
+                label="Responsable (Opcional)"
+                placeholder="Ej. Patricia Vega"
+                outlined
+                dense
+                maxlength="100"
+              />
+            </div>
+
+            <div class="col-12" :class="departamentoEditar ? 'col-md-6' : 'col-md-6'">
+              <q-input
+                v-model="ubicacion"
+                label="Ubicación física / Sede"
+                placeholder="Ej. Edificio Principal - Piso 3"
+                outlined
+                dense
+                maxlength="100"
+                lazy-rules
+                :rules="[
+                  (v: string) => !!v?.trim() || 'Ingresa la ubicación',
+                  (v: string) => (v?.trim().length ?? 0) <= 100 || 'Máximo 100 caracteres',
+                ]"
+              />
+            </div>
+
+            <div v-if="departamentoEditar" class="col-12">
               <div class="row items-center justify-between toggle-row q-px-md q-py-xs full-height">
                 <div>
                   <div class="text-body2 text-weight-medium text-dark">Estado</div>
@@ -83,6 +143,9 @@
 import { ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import type { Department, DepartmentFormPayload } from '@/stores/useDepartmentsStore';
+import type { TipoDepartamentoItem } from '@/stores/useTipoDepartamentosStore';
+
+const PATRON_TELEFONO = /^\d{4}-\d{7}$/;
 
 const $q = useQuasar();
 const props = defineProps<{
@@ -90,6 +153,7 @@ const props = defineProps<{
   guardando: boolean;
   error: string | null;
   departamentoEditar: Department | null;
+  tiposDepartamento: TipoDepartamentoItem[];
 }>();
 
 const emit = defineEmits<{
@@ -102,7 +166,7 @@ const nombre = ref('');
 const responsable = ref('');
 const telefono = ref('');
 const ubicacion = ref('');
-const esSubgerenciaTI = ref(false);
+const idTipoDepartamento = ref<number | null>(null);
 const activoToggle = ref(true);
 
 watch(
@@ -112,18 +176,18 @@ watch(
     if (props.departamentoEditar) {
       codigo.value = props.departamentoEditar.codigo;
       nombre.value = props.departamentoEditar.nombre;
-      responsable.value = props.departamentoEditar.responsable;
+      responsable.value = props.departamentoEditar.responsable ?? '';
       telefono.value = props.departamentoEditar.telefono;
       ubicacion.value = props.departamentoEditar.ubicacion ?? '';
-      esSubgerenciaTI.value = props.departamentoEditar.esSubgerenciaTI;
-      activoToggle.value = props.departamentoEditar.estado === 'Activo';
+      idTipoDepartamento.value = props.departamentoEditar.id_tipo_departamento;
+      activoToggle.value = props.departamentoEditar.is_activo;
     } else {
       codigo.value = '';
       nombre.value = '';
       responsable.value = '';
       telefono.value = '';
       ubicacion.value = '';
-      esSubgerenciaTI.value = false;
+      idTipoDepartamento.value = props.tiposDepartamento[0]?.id ?? null;
       activoToggle.value = true;
     }
   },
@@ -133,16 +197,33 @@ function limpiar(v: string): string {
   return v.replace(/[<>"'`\p{Cc}]/gu, '').trim();
 }
 
+function validarTelefono(v: string): true | string {
+  const limpio = (v ?? '').trim();
+  if (!limpio) return 'Teléfono requerido';
+  if (!PATRON_TELEFONO.test(limpio)) {
+    return 'Formato requerido: XXXX-XXXXXXX (ej. 0412-1234567)';
+  }
+  return true;
+}
+
 function alGuardar(): void {
-  emit('guardar', {
+  if (!idTipoDepartamento.value) return;
+
+  const responsableLimpio = limpiar(responsable.value);
+  const payload: DepartmentFormPayload = {
     codigo: limpiar(codigo.value).toUpperCase(),
     nombre: limpiar(nombre.value),
-    responsable: limpiar(responsable.value),
+    responsable: responsableLimpio.length > 0 ? responsableLimpio : null,
     telefono: limpiar(telefono.value),
     ubicacion: limpiar(ubicacion.value),
-    esSubgerenciaTI: esSubgerenciaTI.value,
-    estado: activoToggle.value ? 'Activo' : 'Inactivo',
-  });
+    id_tipo_departamento: idTipoDepartamento.value,
+  };
+
+  if (props.departamentoEditar) {
+    payload.estado = activoToggle.value ? 'Activo' : 'Inactivo';
+  }
+
+  emit('guardar', payload);
 }
 </script>
 

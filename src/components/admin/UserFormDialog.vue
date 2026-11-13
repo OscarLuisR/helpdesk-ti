@@ -14,7 +14,11 @@
             {{ usuarioEditar ? 'Editar Usuario' : 'Nuevo Usuario' }}
           </div>
           <div class="text-caption muted">
-            {{ usuarioEditar ? 'Actualiza los datos o perfil del usuario.' : 'Registra una nueva cuenta de acceso corporativo.' }}
+            {{
+              usuarioEditar
+                ? 'Actualiza los datos, departamento o rol del usuario.'
+                : 'Registra una nueva cuenta corporativa (clave inicial por defecto: 123456).'
+            }}
           </div>
         </div>
         <q-btn flat round dense icon="close" color="grey-7" :disable="guardando" @click="emit('update:abierto', false)" />
@@ -29,29 +33,101 @@
         <q-form @submit.prevent="alGuardar">
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6">
-              <q-input v-model="nombre" label="Nombre completo" placeholder="Ej. María González" outlined dense maxlength="80" lazy-rules :rules="[(v: string) => !!v?.trim() || 'Ingresa el nombre completo']" />
+              <q-input
+                v-model="nombreCompleto"
+                label="Nombre completo"
+                placeholder="Ej. María González"
+                outlined
+                dense
+                maxlength="100"
+                lazy-rules
+                :rules="[
+                  (v: string) => !!v?.trim() || 'Ingresa el nombre completo',
+                  (v: string) => (v?.trim().length ?? 0) <= 100 || 'Máximo 100 caracteres',
+                ]"
+              />
             </div>
 
             <div class="col-12 col-md-6">
-              <q-input v-model="username" label="Nombre de usuario (Login)" placeholder="Ej. maria.gonzalez" outlined dense maxlength="50" lazy-rules :rules="[validarUsernameLogin]" />
+              <q-input
+                v-model="nick"
+                label="Nombre de usuario (Login)"
+                placeholder="Ej. maria.gonzalez"
+                outlined
+                dense
+                maxlength="25"
+                lazy-rules
+                :rules="[validarUsernameLogin]"
+              />
             </div>
 
             <div class="col-12 col-md-6">
-              <q-input v-model="telefono" label="Teléfono" placeholder="0412-2964550" mask="####-#######" outlined dense lazy-rules :rules="[validarTelefonoUsuario]" />
+              <q-input
+                v-model="telefono"
+                label="Teléfono"
+                placeholder="0412-2964550"
+                mask="####-#######"
+                outlined
+                dense
+                lazy-rules
+                :rules="[validarTelefonoUsuario]"
+              />
             </div>
 
             <div class="col-12 col-md-6">
-              <q-select v-model="departamento" :options="DEPARTAMENTOS_SISTEMA" label="Departamento" outlined dense options-dense lazy-rules :rules="[(v: string) => !!v || 'Selecciona un departamento']" />
+              <q-input
+                v-model="email"
+                label="Correo electrónico (Opcional)"
+                placeholder="usuario@empresa.com"
+                outlined
+                dense
+                maxlength="150"
+                lazy-rules
+                :rules="[validarEmailUsuario]"
+              />
             </div>
 
             <div class="col-12 col-md-6">
-              <q-select v-model="rol" :options="OPCIONES_ROL_SIMULADOR" option-value="valor" option-label="etiqueta" emit-value map-options label="Rol en el sistema" outlined dense options-dense />
+              <q-select
+                v-model="idDepartamento"
+                :options="opcionesDepartamento"
+                option-value="id"
+                option-label="nombre"
+                emit-value
+                map-options
+                label="Departamento"
+                outlined
+                dense
+                options-dense
+                lazy-rules
+                :rules="[(v: number | null) => (typeof v === 'number' && v > 0) || 'Selecciona un departamento']"
+              />
             </div>
 
             <div class="col-12 col-md-6">
-              <div class="row items-center justify-between estado-row q-px-sm q-py-xs full-height">
-                <span class="text-body2 text-weight-medium text-dark">Estado de la cuenta</span>
-                <q-toggle v-model="activoToggle" color="primary" :label="activoToggle ? 'Activo' : 'Inactivo'" />
+              <q-select
+                v-model="idRol"
+                :options="opcionesRol"
+                option-value="id"
+                option-label="nombre"
+                emit-value
+                map-options
+                label="Rol en el sistema"
+                outlined
+                dense
+                options-dense
+                lazy-rules
+                :rules="[(v: number | null) => (typeof v === 'number' && v > 0) || 'Selecciona un rol']"
+              />
+            </div>
+
+            <div v-if="usuarioEditar" class="col-12">
+              <div class="row items-center justify-between estado-row q-px-md q-py-xs full-height">
+                <div>
+                  <div class="text-body2 text-weight-medium text-dark">Estado de la cuenta</div>
+                  <div class="text-caption muted">{{ activoToggle ? 'Activo' : 'Inactivo' }}</div>
+                </div>
+                <q-toggle v-model="activoToggle" color="primary" />
               </div>
             </div>
 
@@ -69,16 +145,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import {
   formatearTelefonoMask,
+  validarEmailUsuario,
   validarTelefonoUsuario,
   validarUsernameLogin,
 } from '@/composables/useUsersView';
-import { OPCIONES_ROL_SIMULADOR } from '@/models/auth';
-import type { RolUsuario } from '@/models/types';
-import { DEPARTAMENTOS_SISTEMA, type User, type UserFormPayload } from '@/stores/useUsersStore';
+import type { Department } from '@/stores/useDepartmentsStore';
+import type { RolItem } from '@/stores/useRolesStore';
+import type { User, UserFormPayload } from '@/stores/useUsersStore';
 
 const $q = useQuasar();
 const props = defineProps<{
@@ -86,6 +163,8 @@ const props = defineProps<{
   guardando: boolean;
   error: string | null;
   usuarioEditar: User | null;
+  roles: RolItem[];
+  departamentos: Department[];
 }>();
 
 const emit = defineEmits<{
@@ -93,30 +172,44 @@ const emit = defineEmits<{
   guardar: [payload: UserFormPayload];
 }>();
 
-const nombre = ref('');
-const username = ref('');
+const nombreCompleto = ref('');
+const nick = ref('');
 const telefono = ref('');
-const departamento = ref<string>(DEPARTAMENTOS_SISTEMA[0]!);
-const rol = ref<RolUsuario>('USUARIO');
+const email = ref('');
+const idDepartamento = ref<number | null>(null);
+const idRol = ref<number | null>(null);
 const activoToggle = ref(true);
+
+const opcionesDepartamento = computed(() =>
+  props.departamentos.filter(
+    (d) => d.is_activo || d.id === props.usuarioEditar?.id_departamento,
+  ),
+);
+
+const opcionesRol = computed(() =>
+  props.roles.filter((r) => r.is_activo || r.id === props.usuarioEditar?.id_rol),
+);
 
 watch(
   () => props.abierto,
   (abierto) => {
     if (!abierto) return;
     if (props.usuarioEditar) {
-      nombre.value = props.usuarioEditar.nombre;
-      username.value = props.usuarioEditar.username;
+      nombreCompleto.value = props.usuarioEditar.nombre_completo;
+      nick.value = props.usuarioEditar.nick;
       telefono.value = props.usuarioEditar.telefono;
-      departamento.value = props.usuarioEditar.departamento;
-      rol.value = props.usuarioEditar.rol;
-      activoToggle.value = props.usuarioEditar.estado === 'Activo';
+      email.value = props.usuarioEditar.email ?? '';
+      idDepartamento.value = props.usuarioEditar.id_departamento;
+      idRol.value = props.usuarioEditar.id_rol;
+      activoToggle.value = props.usuarioEditar.is_activo;
     } else {
-      nombre.value = '';
-      username.value = '';
+      nombreCompleto.value = '';
+      nick.value = '';
       telefono.value = '';
-      departamento.value = DEPARTAMENTOS_SISTEMA[0]!;
-      rol.value = 'USUARIO';
+      email.value = '';
+      idDepartamento.value = opcionesDepartamento.value[0]?.id ?? null;
+      const rolUsuarioDefecto = opcionesRol.value.find((r) => r.codigo === 'USUARIO');
+      idRol.value = rolUsuarioDefecto?.id ?? opcionesRol.value[0]?.id ?? null;
       activoToggle.value = true;
     }
   },
@@ -129,15 +222,23 @@ function limpiarTexto(valor: string): string {
 function alGuardar(): void {
   const telefonoArmado = formatearTelefonoMask(telefono.value);
   if (validarTelefonoUsuario(telefonoArmado) !== true) return;
+  if (!idDepartamento.value || !idRol.value) return;
 
-  emit('guardar', {
-    nombre: limpiarTexto(nombre.value),
-    username: username.value.replace(/[\p{Cc}\s]/gu, '').toLowerCase(),
+  const emailLimpio = limpiarTexto(email.value).toLowerCase();
+  const payload: UserFormPayload = {
+    nombre_completo: limpiarTexto(nombreCompleto.value),
+    nick: nick.value.replace(/[\p{Cc}\s]/gu, '').toLowerCase(),
     telefono: telefonoArmado,
-    departamento: departamento.value,
-    rol: rol.value,
-    estado: activoToggle.value ? 'Activo' : 'Inactivo',
-  });
+    email: emailLimpio.length > 0 ? emailLimpio : null,
+    id_departamento: idDepartamento.value,
+    id_rol: idRol.value,
+  };
+
+  if (props.usuarioEditar) {
+    payload.is_activo = activoToggle.value;
+  }
+
+  emit('guardar', payload);
 }
 </script>
 

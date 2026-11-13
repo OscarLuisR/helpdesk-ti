@@ -1,26 +1,48 @@
+import axios from 'axios';
 import { computed, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import type { CredencialesLogin } from '@/models/auth';
+import type { CredencialesLogin, ErrorApiBackend } from '@/models/auth';
 import type { RolUsuario } from '@/models/types';
 import { useAuthStore } from '@/stores/authStore';
 import { useTicketStore } from '@/stores/ticketStore';
 
-const MAX_INTENTOS_FALLIDOS = 5;
-const SEGUNDOS_BLOQUEO = 30;
-/** Lista blanca estricta: solo letras, números, punto, guion y guion bajo (3 a 50 caracteres). */
-export const PATRON_NOMBRE_USUARIO = /^[a-zA-Z0-9._-]{3,50}$/;
+const SEGUNDOS_BLOQUEO_DEFECTO = 15 * 60; // 15 minutos (alineado con rateLimit.middleware.ts del backend)
+/** Lista blanca estricta: solo letras, números, punto, guion y guion bajo (3 a 25 caracteres). */
+export const PATRON_NOMBRE_USUARIO = /^[a-zA-Z0-9._-]{3,25}$/;
 
 /** Elimina caracteres de control y espacios laterales. */
 function sanitizarUsername(valor: string): string {
   return valor.replace(/[\p{Cc}\s]/gu, '');
 }
 
-export function rutaInicioPorRol(rol: RolUsuario): string {
-  // TODO: Asignar ruta destino específica por perfil cuando se definan todas las vistas
-  if (rol === 'ADMINISTRADOR') {
-    return '/admin/usuarios';
+function formatearSegundos(totalSegundos: number): string {
+  const seg = Math.max(0, Math.ceil(totalSegundos));
+  if (seg < 60) {
+    return `${seg}s`;
   }
-  return '/tecnico/mis-tickets';
+  const minutos = Math.floor(seg / 60);
+  const restoSegundos = seg % 60;
+  return `${minutos}:${String(restoSegundos).padStart(2, '0')} min`;
+}
+
+// 🛡️ [FASE 2.3 - TICKETS] Ruta de aterrizaje real según el rol autenticado
+export function rutaInicioPorRol(rol: RolUsuario): string {
+  switch (rol) {
+    case 'ADMINISTRADOR':
+      return '/admin/roles';
+    case 'MESA_TECNICA':
+      return '/tickets/recepcion';
+    case 'GERENTE_AREA':
+      return '/gerencia/bandeja';
+    case 'TECNICO':
+      return '/tecnico/mis-tickets';
+    case 'GERENTE_GENERAL':
+      return '/tickets/recepcion';
+    case 'USUARIO':
+      return '/usuario/mis-solicitudes';
+    default:
+      return '/tecnico/mis-tickets';
+  }
 }
 
 export function useAuth() {
@@ -30,7 +52,7 @@ export function useAuth() {
 
   const cargando = ref(false);
   const errorAuth = ref<string | null>(null);
-  const intentosFallidos = ref(0);
+  const intentosRestantes = ref<number | null>(null);
   const segundosBloqueo = ref(0);
   let temporizadorBloqueo: ReturnType<typeof setInterval> | null = null;
 
@@ -38,6 +60,7 @@ export function useAuth() {
   const rolActual = computed(() => authStore.rolActual);
   const isAuthenticated = computed(() => authStore.isAuthenticated);
   const estaBloqueado = computed(() => segundosBloqueo.value > 0);
+  const tiempoBloqueoTexto = computed(() => formatearSegundos(segundosBloqueo.value));
 
   function detenerTemporizador(): void {
     if (temporizadorBloqueo !== null) {
@@ -46,14 +69,16 @@ export function useAuth() {
     }
   }
 
-  function activarBloqueoTemporal(): void {
+  function activarBloqueoTemporal(segundos = SEGUNDOS_BLOQUEO_DEFECTO): void {
     detenerTemporizador();
-    segundosBloqueo.value = SEGUNDOS_BLOQUEO;
+    segundosBloqueo.value = Math.max(1, Math.ceil(segundos));
+    intentosRestantes.value = 0;
+
     temporizadorBloqueo = setInterval(() => {
       segundosBloqueo.value -= 1;
       if (segundosBloqueo.value <= 0) {
         detenerTemporizador();
-        intentosFallidos.value = 0;
+        intentosRestantes.value = null;
         errorAuth.value = null;
       }
     }, 1000);
@@ -74,7 +99,7 @@ export function useAuth() {
       return false;
     }
 
-    if (!PATRON_NOMBRE_USUARIO.test(usernameLimpio) || credenciales.password.length > 128) {
+    if (!PATRON_NOMBRE_USUARIO.test(usernameLimpio) || credenciales.password.length > 72) {
       errorAuth.value = 'Usuario o contraseña incorrectos.';
       return false;
     }
@@ -85,16 +110,47 @@ export function useAuth() {
         username: usernameLimpio,
         password: credenciales.password,
       });
-      intentosFallidos.value = 0;
+
+      intentosRestantes.value = null;
+      detenerTemporizador();
+      segundosBloqueo.value = 0;
+
+      // Regla de negocio: si es usuario nuevo (`is_new_user === true`), encapsular en cambio de contraseña
+      if (sesion.is_new_user) {
+        await router.push('/cambiar-contrasena');
+        return true;
+      }
+
       await ticketStore.cargarTickets();
       await router.push(rutaInicioPorRol(sesion.rol));
       return true;
-    } catch (err) {
-      intentosFallidos.value += 1;
-      if (intentosFallidos.value >= MAX_INTENTOS_FALLIDOS) {
-        activarBloqueoTemporal();
-        errorAuth.value =
-          'Demasiados intentos fallidos. Por seguridad, espera antes de volver a intentar.';
+    } catch (err: unknown) {
+      if (axios.isAxiosError<ErrorApiBackend>(err)) {
+        const status = err.response?.status;
+        const datosError = err.response?.data;
+        const mensajeBackend = datosError?.message?.trim();
+
+        if (status === 429 || datosError?.code === 'ACCOUNT_LOCKED') {
+          const retrySegundos =
+            typeof datosError?.details?.retry_after_segundos === 'number'
+              ? datosError.details.retry_after_segundos
+              : SEGUNDOS_BLOQUEO_DEFECTO;
+
+          activarBloqueoTemporal(retrySegundos);
+          errorAuth.value =
+            mensajeBackend ||
+            'Demasiados intentos fallidos. Tu acceso ha sido bloqueado temporalmente por seguridad.';
+        } else if (!err.response) {
+          errorAuth.value =
+            'No se pudo conectar con el servidor. Verifica que el servicio esté activo.';
+        } else {
+          intentosRestantes.value =
+            typeof datosError?.details?.intentos_restantes === 'number'
+              ? datosError.details.intentos_restantes
+              : null;
+
+          errorAuth.value = mensajeBackend || 'Usuario o contraseña incorrectos.';
+        }
       } else {
         errorAuth.value =
           err instanceof Error ? err.message : 'No fue posible iniciar sesión. Intenta nuevamente.';
@@ -123,8 +179,10 @@ export function useAuth() {
     isAuthenticated,
     cargando,
     errorAuth,
+    intentosRestantes,
     estaBloqueado,
     segundosBloqueo,
+    tiempoBloqueoTexto,
     iniciarSesion,
     cerrarSesion,
     limpiarError,

@@ -1,13 +1,24 @@
 <template>
-  <q-dialog :model-value="abierto" persistent @update:model-value="(val) => emit('update:abierto', val)">
-    <q-card flat bordered class="dialog-card">
+  <q-dialog
+    :model-value="abierto"
+    persistent
+    :maximized="$q.screen.lt.sm"
+    transition-show="slide-up"
+    transition-hide="slide-down"
+    @update:model-value="(val) => emit('update:abierto', val)"
+  >
+    <q-card flat bordered class="dialog-card" :class="{ 'no-border-radius full-height': $q.screen.lt.sm }">
       <q-card-section class="row items-center justify-between q-pb-sm dialog-header">
         <div>
           <div class="text-subtitle1 text-weight-bold text-dark">
-            Configurar SLA — Prioridad {{ slaEditar?.prioridad }}
+            {{ slaEditar ? `Configurar SLA — ${slaEditar.nombre}` : 'Nueva Prioridad SLA' }}
           </div>
           <div class="text-caption muted">
-            Ajusta los tiempos objetivo de asignación, resolución y umbral de suplencia.
+            {{
+              slaEditar
+                ? 'Ajusta los criterios, tiempos objetivo de asignación, resolución y regla de suplencia.'
+                : 'Define un nuevo nivel de prioridad para los tiempos objetivo de atención.'
+            }}
           </div>
         </div>
         <q-btn flat round dense icon="close" color="grey-7" :disable="guardando" @click="emit('update:abierto', false)" />
@@ -23,88 +34,85 @@
 
         <q-form class="q-gutter-y-md" @submit.prevent="alGuardar">
           <q-input
-            v-model="criterio"
-            type="textarea"
-            rows="2"
-            label="Criterio objetivo (Impacto × Urgencia)"
+            v-model="nombre"
+            label="Nombre de la prioridad"
+            placeholder="Ej. Crítica"
             outlined
             dense
-            maxlength="220"
+            maxlength="20"
             lazy-rules
-            :rules="[(v: string) => !!v?.trim() || 'Ingresa el criterio objetivo']"
+            :rules="[
+              (v: string) => !!v?.trim() || 'Ingresa el nombre de la prioridad',
+              (v: string) => (v?.trim().length ?? 0) <= 20 || 'Máximo 20 caracteres',
+            ]"
           />
 
           <q-input
-            v-model="ejemploCorporativo"
-            label="Ejemplo corporativo de referencia"
+            v-model="descripcionCriterio"
+            type="textarea"
+            rows="2"
+            label="Criterio objetivo (Impacto × Urgencia) (Opcional)"
+            placeholder="Describe el criterio de impacto y urgencia para esta prioridad..."
             outlined
             dense
-            maxlength="160"
-            lazy-rules
-            :rules="[(v: string) => !!v?.trim() || 'Ingresa un ejemplo corporativo']"
+          />
+
+          <q-input
+            v-model="ejemplosFalla"
+            label="Ejemplos de falla de referencia (Opcional)"
+            placeholder="Ej. Caída de servidor administrativo o corte de red principal."
+            outlined
+            dense
           />
 
           <div class="row q-col-gutter-sm">
-            <div class="col-4">
+            <div class="col-12 col-sm-6">
               <q-input
-                v-model.number="minutosMetaAsignacion"
+                v-model.number="tiempoMaxAsignacionMinutos"
                 type="number"
                 min="1"
-                max="1440"
-                label="Asignación (min)"
+                max="10080"
+                label="Meta máx. asignación (minutos)"
                 outlined
                 dense
                 lazy-rules
-                :rules="[(v: number) => v > 0 || 'Mayor a 0']"
+                :rules="[(v: number) => (Number.isInteger(v) && v > 0) || 'Entero mayor a 0']"
               />
             </div>
-            <div class="col-4">
+            <div class="col-12 col-sm-6">
               <q-input
-                v-model.number="horasResolucionMin"
+                v-model.number="tiempoMetaResolucionHoras"
                 type="number"
                 min="1"
                 max="720"
-                label="Resolución mín (h)"
+                label="Meta resolución (horas)"
                 outlined
                 dense
                 lazy-rules
-                :rules="[(v: number) => v > 0 || 'Mayor a 0']"
-              />
-            </div>
-            <div class="col-4">
-              <q-input
-                v-model.number="horasResolucionMax"
-                type="number"
-                min="1"
-                max="720"
-                label="Resolución máx (h)"
-                outlined
-                dense
-                lazy-rules
-                :rules="[(v: number) => v >= horasResolucionMin || 'Debe ser >= mín']"
+                :rules="[(v: number) => (Number.isInteger(v) && v > 0) || 'Entero mayor a 0']"
               />
             </div>
           </div>
 
-          <div class="row items-center justify-between estado-row q-px-sm q-py-xs">
-            <span class="text-body2 text-weight-medium text-dark">
-              Habilitar asignación suplente por Mesa Técnica
-            </span>
-            <q-toggle v-model="activaSuplenciaMesa" color="primary" />
+          <div class="row items-center justify-between estado-row q-px-md q-py-xs">
+            <div>
+              <div class="text-body2 text-weight-medium text-dark">
+                Habilitar asignación suplente por Mesa Técnica
+              </div>
+              <div class="text-caption muted">
+                Permite escalamiento automático cuando vence el tiempo máximo de asignación
+              </div>
+            </div>
+            <q-toggle v-model="activaSuplencia" color="primary" />
           </div>
 
-          <q-input
-            v-if="activaSuplenciaMesa"
-            v-model.number="minutosUmbralSuplencia"
-            type="number"
-            min="1"
-            max="480"
-            label="Umbral de espera para activar suplencia (minutos)"
-            outlined
-            dense
-            lazy-rules
-            :rules="[(v: number) => v > 0 || 'Ingresa el tiempo umbral en minutos']"
-          />
+          <div v-if="slaEditar" class="row items-center justify-between estado-row q-px-md q-py-xs">
+            <div>
+              <div class="text-body2 text-weight-medium text-dark">Estado de la prioridad</div>
+              <div class="text-caption muted">{{ isActivo ? 'Activo' : 'Inactivo' }}</div>
+            </div>
+            <q-toggle v-model="isActivo" color="primary" />
+          </div>
 
           <div class="row justify-end q-gutter-x-sm q-pt-sm">
             <q-btn
@@ -120,7 +128,7 @@
               unelevated
               no-caps
               color="primary"
-              label="Guardar SLA"
+              :label="slaEditar ? 'Guardar cambios' : 'Crear prioridad'"
               :loading="guardando"
               :disable="guardando"
             >
@@ -138,39 +146,51 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import type { ConfiguracionSla, PayloadConfiguracionSla } from '@/models/catalogos';
+import { useQuasar } from 'quasar';
+import type { PrioridadFormPayload, PrioridadItem } from '@/stores/usePrioridadesStore';
 
+const $q = useQuasar();
 const props = defineProps<{
   abierto: boolean;
   guardando: boolean;
   error: string | null;
-  slaEditar: ConfiguracionSla | null;
+  slaEditar: PrioridadItem | null;
 }>();
 
 const emit = defineEmits<{
   'update:abierto': [valor: boolean];
-  guardar: [payload: PayloadConfiguracionSla];
+  guardar: [payload: PrioridadFormPayload];
 }>();
 
-const criterio = ref('');
-const ejemploCorporativo = ref('');
-const minutosMetaAsignacion = ref(15);
-const horasResolucionMin = ref(1);
-const horasResolucionMax = ref(4);
-const activaSuplenciaMesa = ref(true);
-const minutosUmbralSuplencia = ref(15);
+const nombre = ref('');
+const descripcionCriterio = ref('');
+const ejemplosFalla = ref('');
+const tiempoMaxAsignacionMinutos = ref(15);
+const tiempoMetaResolucionHoras = ref(4);
+const activaSuplencia = ref(true);
+const isActivo = ref(true);
 
 watch(
   () => props.abierto,
   (abierto) => {
-    if (!abierto || !props.slaEditar) return;
-    criterio.value = props.slaEditar.criterio;
-    ejemploCorporativo.value = props.slaEditar.ejemploCorporativo;
-    minutosMetaAsignacion.value = props.slaEditar.minutosMetaAsignacion;
-    horasResolucionMin.value = props.slaEditar.horasResolucionMin;
-    horasResolucionMax.value = props.slaEditar.horasResolucionMax;
-    activaSuplenciaMesa.value = props.slaEditar.activaSuplenciaMesa;
-    minutosUmbralSuplencia.value = props.slaEditar.minutosUmbralSuplencia;
+    if (!abierto) return;
+    if (props.slaEditar) {
+      nombre.value = props.slaEditar.nombre;
+      descripcionCriterio.value = props.slaEditar.descripcion_criterio ?? '';
+      ejemplosFalla.value = props.slaEditar.ejemplos_falla ?? '';
+      tiempoMaxAsignacionMinutos.value = props.slaEditar.tiempo_max_asignacion_minutos;
+      tiempoMetaResolucionHoras.value = props.slaEditar.tiempo_meta_resolucion_horas;
+      activaSuplencia.value = props.slaEditar.activa_suplencia;
+      isActivo.value = props.slaEditar.is_activo;
+    } else {
+      nombre.value = '';
+      descripcionCriterio.value = '';
+      ejemplosFalla.value = '';
+      tiempoMaxAsignacionMinutos.value = 15;
+      tiempoMetaResolucionHoras.value = 4;
+      activaSuplencia.value = true;
+      isActivo.value = true;
+    }
   },
 );
 
@@ -179,14 +199,41 @@ function limpiarTexto(valor: string): string {
 }
 
 function alGuardar(): void {
-  emit('guardar', {
-    criterio: limpiarTexto(criterio.value),
-    ejemploCorporativo: limpiarTexto(ejemploCorporativo.value),
-    minutosMetaAsignacion: Number(minutosMetaAsignacion.value),
-    horasResolucionMin: Number(horasResolucionMin.value),
-    horasResolucionMax: Number(horasResolucionMax.value),
-    activaSuplenciaMesa: activaSuplenciaMesa.value,
-    minutosUmbralSuplencia: Number(minutosUmbralSuplencia.value),
-  });
+  const criterioLimpio = limpiarTexto(descripcionCriterio.value);
+  const ejemploLimpio = limpiarTexto(ejemplosFalla.value);
+
+  const payload: PrioridadFormPayload = {
+    nombre: limpiarTexto(nombre.value),
+    tiempo_max_asignacion_minutos: Number(tiempoMaxAsignacionMinutos.value),
+    tiempo_meta_resolucion_horas: Number(tiempoMetaResolucionHoras.value),
+    descripcion_criterio: criterioLimpio.length > 0 ? criterioLimpio : null,
+    ejemplos_falla: ejemploLimpio.length > 0 ? ejemploLimpio : null,
+    activa_suplencia: activaSuplencia.value,
+  };
+
+  if (props.slaEditar) {
+    payload.is_activo = isActivo.value;
+  }
+
+  emit('guardar', payload);
 }
 </script>
+
+<style scoped lang="scss">
+.dialog-card {
+  width: 100vw;
+  max-width: 680px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.dialog-header { border-bottom: 1px solid var(--border); }
+.muted { color: var(--muted); }
+.estado-row { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+.form-error {
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  color: var(--danger);
+  font-size: 0.84rem;
+}
+</style>

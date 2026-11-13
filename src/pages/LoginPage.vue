@@ -9,11 +9,15 @@
 
         <q-banner v-if="errorAuth" dense rounded class="login-error q-mb-md" role="alert">
           <template #avatar>
-            <q-icon name="error_outline" color="negative" size="20px" />
+            <q-icon
+              :name="estaBloqueado ? 'lock_clock' : 'error_outline'"
+              color="negative"
+              size="20px"
+            />
           </template>
           <span>{{ errorAuth }}</span>
           <span v-if="estaBloqueado" class="text-weight-bold q-ml-xs">
-            ({{ segundosBloqueo }}s)
+            ({{ tiempoBloqueoTexto }})
           </span>
         </q-banner>
 
@@ -26,7 +30,7 @@
               type="text"
               outlined
               dense
-              maxlength="50"
+              maxlength="25"
               autocomplete="username"
               autocapitalize="none"
               autocorrect="off"
@@ -48,7 +52,7 @@
               :type="mostrarContrasena ? 'text' : 'password'"
               outlined
               dense
-              maxlength="128"
+              maxlength="72"
               autocomplete="current-password"
               autocapitalize="none"
               autocorrect="off"
@@ -75,7 +79,7 @@
 
           <q-btn
             type="submit"
-            :label="estaBloqueado ? `Bloqueado (${segundosBloqueo}s)` : 'Iniciar sesión'"
+            :label="estaBloqueado ? `Bloqueado (${tiempoBloqueoTexto})` : 'Iniciar sesión'"
             color="primary"
             unelevated
             no-caps
@@ -105,7 +109,7 @@ const {
   cargando,
   errorAuth,
   estaBloqueado,
-  segundosBloqueo,
+  tiempoBloqueoTexto,
 } = useAuth();
 
 const nombreUsuario = ref('');
@@ -139,39 +143,83 @@ async function alEnviarFormulario() {
 </script>
 
 <style scoped lang="scss">
-.login { display: grid; grid-template-columns: 1fr 1fr; min-height: 100vh; }
+.login {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+}
 .login-right {
-  display: grid; place-items: center; padding: 24px;
+  display: grid;
+  place-items: center;
+  padding: 24px;
   background-color: #f4f7f9;
   background-image: radial-gradient(#dbe2ea 1px, transparent 1px);
   background-size: 16px 16px;
 }
 .login-card {
-  width: 100%; max-width: 410px; background: #fff; border: 1px solid #e8eef3;
-  border-radius: 14px; padding: 38px 36px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.03);
-  h1 { font-size: 1.75rem; font-weight: 700; color: #0f172a; margin: 0 0 6px; letter-spacing: -0.02em; }
-  .sub { color: #64748b; margin: 0 0 26px; font-size: 0.88rem; }
+  width: 100%;
+  max-width: 410px;
+  background: #fff;
+  border: 1px solid #e8eef3;
+  border-radius: 14px;
+  padding: 38px 36px;
+  box-shadow:
+    0 10px 30px rgba(15, 23, 42, 0.06),
+    0 1px 3px rgba(15, 23, 42, 0.03);
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 6px;
+    letter-spacing: -0.02em;
+  }
+  .sub {
+    color: #64748b;
+    margin: 0 0 26px;
+    font-size: 0.88rem;
+  }
 }
-.field-group { margin-bottom: 18px; }
+.field-group {
+  margin-bottom: 18px;
+}
 .field-label {
-  display: block; font-size: 0.82rem; font-weight: 600; color: #1e293b; margin-bottom: 6px;
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 6px;
 }
 .clean-input :deep(.q-field__control) {
-  height: 42px; border-radius: 8px; background: #fff;
-  &::before { border-color: #cbd5e1; transition: border-color 0.2s ease; }
+  height: 42px;
+  border-radius: 8px;
+  background: #fff;
+  &::before {
+    border-color: #cbd5e1;
+    transition: border-color 0.2s ease;
+  }
 }
 .clean-input :deep(.q-field--focused .q-field__control),
 .clean-input.q-field--focused :deep(.q-field__control) {
   box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.2);
 }
-.btn-signin { height: 42px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; }
+.btn-signin {
+  height: 42px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
 .login-error {
-  background: rgba(220, 38, 38, 0.08); border: 1px solid rgba(220, 38, 38, 0.25);
-  color: var(--danger); font-size: 0.84rem;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  color: var(--danger);
+  font-size: 0.84rem;
 }
 @media (max-width: 900px) {
-  .login { grid-template-columns: 1fr; }
-  .login-brand-panel { display: none; }
+  .login {
+    grid-template-columns: 1fr;
+  }
+  .login-brand-panel {
+    display: none;
+  }
 }
 </style>

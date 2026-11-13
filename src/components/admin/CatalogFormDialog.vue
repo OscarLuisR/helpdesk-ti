@@ -11,10 +11,14 @@
       <q-card-section class="row items-center justify-between q-pb-sm dialog-header">
         <div>
           <div class="text-subtitle1 text-weight-bold text-dark">
-            {{ servicioEditar ? 'Editar Servicio / Caso' : 'Nuevo Servicio / Caso' }}
+            {{ servicioEditar ? 'Editar Servicio / Incidencia' : 'Nuevo Servicio / Incidencia' }}
           </div>
           <div class="text-caption muted">
-            {{ servicioEditar ? 'Actualiza los parámetros del servicio.' : 'Registra un nuevo tipo de servicio para la Mesa Técnica.' }}
+            {{
+              servicioEditar
+                ? 'Actualiza los parámetros del catálogo.'
+                : 'Registra una nueva incidencia o servicio para la Mesa Técnica.'
+            }}
           </div>
         </div>
         <q-btn flat round dense icon="close" color="grey-7" :disable="guardando" @click="emit('update:abierto', false)" />
@@ -31,56 +35,54 @@
             <div class="col-12">
               <q-input
                 v-model="nombre"
-                label="Nombre del Servicio / Falla"
+                label="Nombre del Servicio / Incidencia"
                 placeholder="Ej. Falla de Impresora o Periférico"
                 outlined
                 dense
-                maxlength="100"
+                maxlength="150"
                 lazy-rules
-                :rules="[(v: string) => !!v?.trim() || 'Ingresa el nombre del servicio']"
+                :rules="[
+                  (v: string) => !!v?.trim() || 'Ingresa el nombre del servicio',
+                  (v: string) => (v?.trim().length ?? 0) <= 150 || 'Máximo 150 caracteres',
+                ]"
               />
             </div>
 
             <div class="col-12 col-md-6">
               <q-select
-                v-model="naturaleza"
-                :options="OPCIONES_NATURALEZA"
-                label="Naturaleza del Trabajo"
+                v-model="idDepartamento"
+                :options="opcionesDepartamento"
+                option-value="id"
+                :option-label="(d: Department) => `${d.codigo} — ${d.nombre}`"
+                emit-value
+                map-options
+                label="Departamento Destino"
                 outlined
                 dense
                 options-dense
                 lazy-rules
-                :rules="[(v: string) => !!v || 'Selecciona una naturaleza']"
+                :rules="[(v: number | null) => (typeof v === 'number' && v > 0) || 'Selecciona un departamento']"
               />
             </div>
 
             <div class="col-12 col-md-6">
               <q-select
-                v-model="subgerenciaDestino"
-                :options="OPCIONES_SUBGERENCIA"
-                label="Sub-Gerencia Destino"
-                outlined
-                dense
-                options-dense
-                lazy-rules
-                :rules="[(v: string) => !!v || 'Selecciona sub-gerencia']"
-              />
-            </div>
-
-            <div class="col-12 col-md-6">
-              <q-select
-                v-model="prioridadSugerida"
-                :options="OPCIONES_PRIORIDAD"
+                v-model="idPrioridad"
+                :options="opcionesPrioridad"
+                option-value="id"
+                option-label="nombre"
+                emit-value
+                map-options
                 label="Prioridad Sugerida"
                 outlined
                 dense
                 options-dense
                 lazy-rules
-                :rules="[(v: string) => !!v || 'Selecciona la prioridad']"
+                :rules="[(v: number | null) => (typeof v === 'number' && v > 0) || 'Selecciona una prioridad']"
               />
             </div>
 
-            <div class="col-12 col-md-6">
+            <div v-if="servicioEditar" class="col-12">
               <div class="row items-center justify-between toggle-row q-px-md q-py-xs full-height">
                 <div>
                   <div class="text-body2 text-weight-medium text-dark">Estado del servicio</div>
@@ -104,18 +106,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
-import {
-  OPCIONES_NATURALEZA,
-  OPCIONES_PRIORIDAD,
-  OPCIONES_SUBGERENCIA,
-  type NaturalezaTrabajo,
-  type PrioridadSugerida,
-  type ServiceCatalog,
-  type ServiceCatalogPayload,
-  type SubgerenciaDestino,
-} from '@/stores/useCatalogStore';
+import type { ServiceCatalog, ServiceCatalogPayload } from '@/stores/useCatalogStore';
+import type { Department } from '@/stores/useDepartmentsStore';
+import type { PrioridadItem } from '@/stores/usePrioridadesStore';
 
 const $q = useQuasar();
 const props = defineProps<{
@@ -123,6 +118,8 @@ const props = defineProps<{
   guardando: boolean;
   error: string | null;
   servicioEditar: ServiceCatalog | null;
+  departamentos: Department[];
+  prioridades: PrioridadItem[];
 }>();
 
 const emit = defineEmits<{
@@ -131,10 +128,19 @@ const emit = defineEmits<{
 }>();
 
 const nombre = ref('');
-const naturaleza = ref<NaturalezaTrabajo>('Incidencia');
-const subgerenciaDestino = ref<SubgerenciaDestino>('Soporte Técnico');
-const prioridadSugerida = ref<PrioridadSugerida>('Media');
+const idDepartamento = ref<number | null>(null);
+const idPrioridad = ref<number | null>(null);
 const activoToggle = ref(true);
+
+const opcionesDepartamento = computed(() =>
+  props.departamentos.filter(
+    (d) => d.is_activo || d.id === props.servicioEditar?.id_departamento,
+  ),
+);
+
+const opcionesPrioridad = computed(() =>
+  props.prioridades.filter((p) => p.is_activo || p.id === props.servicioEditar?.id_prioridad),
+);
 
 watch(
   () => props.abierto,
@@ -142,15 +148,13 @@ watch(
     if (!abierto) return;
     if (props.servicioEditar) {
       nombre.value = props.servicioEditar.nombre;
-      naturaleza.value = props.servicioEditar.naturaleza;
-      subgerenciaDestino.value = props.servicioEditar.subgerenciaDestino;
-      prioridadSugerida.value = props.servicioEditar.prioridadSugerida;
-      activoToggle.value = props.servicioEditar.estado === 'Activo';
+      idDepartamento.value = props.servicioEditar.id_departamento;
+      idPrioridad.value = props.servicioEditar.id_prioridad;
+      activoToggle.value = props.servicioEditar.is_activo;
     } else {
       nombre.value = '';
-      naturaleza.value = 'Incidencia';
-      subgerenciaDestino.value = 'Soporte Técnico';
-      prioridadSugerida.value = 'Media';
+      idDepartamento.value = opcionesDepartamento.value[0]?.id ?? null;
+      idPrioridad.value = opcionesPrioridad.value[0]?.id ?? null;
       activoToggle.value = true;
     }
   },
@@ -161,13 +165,19 @@ function limpiar(v: string): string {
 }
 
 function alGuardar(): void {
-  emit('guardar', {
+  if (!idDepartamento.value || !idPrioridad.value) return;
+
+  const payload: ServiceCatalogPayload = {
     nombre: limpiar(nombre.value),
-    naturaleza: naturaleza.value,
-    subgerenciaDestino: subgerenciaDestino.value,
-    prioridadSugerida: prioridadSugerida.value,
-    estado: activoToggle.value ? 'Activo' : 'Inactivo',
-  });
+    id_departamento: idDepartamento.value,
+    id_prioridad: idPrioridad.value,
+  };
+
+  if (props.servicioEditar) {
+    payload.is_activo = activoToggle.value;
+  }
+
+  emit('guardar', payload);
 }
 </script>
 

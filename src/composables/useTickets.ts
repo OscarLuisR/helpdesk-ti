@@ -1,7 +1,9 @@
-import { computed, onMounted, ref } from 'vue';
-import type { EstadoTicket, Prioridad, Ticket } from '@/models/types';
+import { computed, onMounted, ref, watch, type Ref } from 'vue';
+import type { EstadoTicket, Prioridad, RolUsuario, Ticket } from '@/models/types';
 import { useAuthStore } from '@/stores/authStore';
-import { useTicketStore } from '@/stores/ticketStore';
+import { ESTADOS_ACTIVOS_TECNICO, useTicketStore } from '@/stores/ticketStore';
+
+// 🛡️ [FASE 2.3 - TICKETS] Composable de bandeja adaptado a roles y datos reales del backend
 
 export const ESTADOS_DISPONIBLES: readonly EstadoTicket[] = [
   'Abierto',
@@ -19,6 +21,14 @@ export const PRIORIDAD_CLASS: Record<Prioridad, string> = {
   Media: 'info',
   Baja: 'neutral',
 };
+
+export function claseChipPrioridad(prioridad: string): string {
+  const normalizada = prioridad.trim().toLowerCase();
+  if (normalizada.includes('crít') || normalizada.includes('crit')) return 'bad';
+  if (normalizada.includes('alta')) return 'warn';
+  if (normalizada.includes('media')) return 'info';
+  return 'neutral';
+}
 
 export const ESTADO_CLASS: Record<EstadoTicket, string> = {
   Abierto: 'neutral',
@@ -55,33 +65,52 @@ export function avatarSolicitanteStyle(nombre: string): { backgroundColor: strin
   return { backgroundColor: color.bg, color: color.fg };
 }
 
-export function useTickets() {
+/**
+ * Determina el filtro de estados inicial según el rol en sesión y el modo de bandeja.
+ */
+function estadosPorDefectoSegunRol(rol: RolUsuario, modoRuta?: string): EstadoTicket[] {
+  if (modoRuta === 'cierre') {
+    return ['Resuelto - Por Verificar'];
+  }
+  if (rol === 'TECNICO') {
+    return [...ESTADOS_ACTIVOS_TECNICO];
+  }
+  if (rol === 'GERENTE_AREA') {
+    return ['Abierto', 'Asignado', 'Reabierto'];
+  }
+  return [];
+}
+
+export function useTickets(modoRuta?: Ref<string | undefined>) {
   const authStore = useAuthStore();
   const ticketStore = useTicketStore();
 
   const busqueda = ref('');
-  const estadosFiltro = ref<EstadoTicket[]>([]);
+  const estadosFiltro = ref<EstadoTicket[]>(
+    estadosPorDefectoSegunRol(authStore.role, modoRuta?.value),
+  );
+
+  function aplicarFiltroPorDefecto(): void {
+    estadosFiltro.value = estadosPorDefectoSegunRol(authStore.role, modoRuta?.value);
+  }
+
+  watch(
+    () => [authStore.role, modoRuta?.value] as const,
+    () => {
+      aplicarFiltroPorDefecto();
+    },
+  );
+
+  async function recargarTickets(): Promise<void> {
+    await ticketStore.cargarTickets();
+  }
 
   onMounted(() => {
-    if (!ticketStore.tickets.length) {
-      void ticketStore.cargarTickets();
-    }
+    void recargarTickets();
   });
 
-  /** Filtra los tickets según la visibilidad permitida al rol en sesión. */
-  const ticketsVisibles = computed<Ticket[]>(() => {
-    const sesion = authStore.usuario;
-    if (!sesion) return [];
-
-    if (authStore.role === 'TECNICO') {
-      return ticketStore.tickets.filter((t) => t.tecnicoAsignado === sesion.id);
-    }
-    if (authStore.role === 'GERENTE_AREA' && sesion.area) {
-      return ticketStore.tickets.filter((t) => t.areaDestino === sesion.area);
-    }
-    // MESA_TECNICA y GERENTE_GENERAL tienen vista global 360°
-    return ticketStore.tickets;
-  });
+  /** El backend aplica el scoping RBAC real; aquí se mantiene una capa de coherencia visual. */
+  const ticketsVisibles = computed<Ticket[]>(() => ticketStore.tickets);
 
   const ticketsFiltrados = computed<Ticket[]>(() => {
     const q = (busqueda.value ?? '').trim().toLowerCase();
@@ -90,14 +119,22 @@ export function useTickets() {
         !estadosFiltro.value.length || estadosFiltro.value.includes(t.estado);
       const coincideTexto =
         !q ||
-        [t.folio, t.solicitante, t.departamento, t.tipoTrabajo, t.prioridad, t.estado].some((v) =>
-          v.toLowerCase().includes(q),
-        );
+        [
+          t.folio,
+          t.solicitante,
+          t.departamento_solicitante,
+          t.catalogo_incidencia,
+          t.departamento,
+          t.prioridad,
+          t.estado,
+          t.tecnico ?? '',
+        ].some((v) => v.toLowerCase().includes(q));
       return coincideEstado && coincideTexto;
     });
   });
 
   function limpiarFiltros(): void {
+    busqueda.value = '';
     estadosFiltro.value = [];
   }
 
@@ -107,6 +144,10 @@ export function useTickets() {
     estadosDisponibles: ESTADOS_DISPONIBLES,
     ticketsVisibles,
     ticketsFiltrados,
+    cargando: computed(() => ticketStore.cargando),
+    errorCarga: computed(() => ticketStore.errorCarga),
     limpiarFiltros,
+    aplicarFiltroPorDefecto,
+    recargarTickets,
   };
 }

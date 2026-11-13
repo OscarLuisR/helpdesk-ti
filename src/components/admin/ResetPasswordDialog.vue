@@ -5,9 +5,9 @@
         <div>
           <div class="text-subtitle1 text-weight-bold text-dark">Restablecer Contraseña</div>
           <div class="text-caption muted">
-            Asigna una nueva clave temporal a
-            <strong class="text-dark">{{ usuario?.nombre }}</strong>
-            (@{{ usuario?.username }}).
+            Se restablecerá la contraseña de
+            <strong class="text-dark">{{ usuario?.nombre_completo }}</strong>
+            ({{ usuario?.nick }}).
           </div>
         </div>
         <q-btn flat round dense icon="close" color="grey-7" :disable="guardando" @click="emit('update:abierto', false)" />
@@ -21,89 +21,51 @@
           {{ error }}
         </q-banner>
 
-        <q-form class="q-gutter-y-md" @submit.prevent="alConfirmar">
-          <div class="row items-center justify-between estado-row q-px-sm q-py-xs">
-            <span class="text-caption muted">¿Necesitas una clave temporal rápida?</span>
-            <q-btn
-              flat
-              dense
-              no-caps
-              color="primary"
-              icon="autorenew"
-              label="Generar clave"
-              :disable="guardando"
-              @click="generarClaveTemporal"
-            />
+        <div class="info-box q-pa-md q-mb-md">
+          <div class="row items-start no-wrap q-gutter-x-sm">
+            <q-icon name="info_outline" color="primary" size="20px" class="q-mt-xs" />
+            <div class="text-body2 text-dark">
+              Al confirmar, la clave de acceso del usuario volverá a ser la contraseña temporal por
+              defecto (<strong class="text-primary">123456</strong>) y el sistema le exigirá cambiarla
+              en su próximo inicio de sesión.
+            </div>
           </div>
+        </div>
 
-          <q-input
-            v-model="nuevaPassword"
-            :type="mostrarPassword ? 'text' : 'password'"
-            label="Nueva contraseña temporal"
-            placeholder="Mínimo 8 caracteres"
-            outlined
-            dense
-            maxlength="64"
-            lazy-rules
-            :rules="[(v: string) => (v && v.trim().length >= 8) || 'Debe tener al menos 8 caracteres']"
-          >
-            <template #append>
-              <q-icon
-                :name="mostrarPassword ? 'visibility_off' : 'visibility'"
-                class="cursor-pointer"
-                color="grey-6"
-                @click="mostrarPassword = !mostrarPassword"
-              />
-            </template>
-          </q-input>
-
-          <q-input
-            v-model="confirmacionPassword"
-            :type="mostrarPassword ? 'text' : 'password'"
-            label="Confirmar contraseña"
-            outlined
-            dense
-            maxlength="64"
-            lazy-rules
-            :rules="[(v: string) => v === nuevaPassword || 'Las contraseñas no coinciden']"
+        <div class="row justify-end q-gutter-x-sm q-pt-sm">
+          <q-btn
+            flat
+            no-caps
+            color="secondary"
+            label="Cancelar"
+            :disable="guardando"
+            @click="emit('update:abierto', false)"
           />
-
-          <div class="row justify-end q-gutter-x-sm q-pt-sm">
-            <q-btn
-              flat
-              no-caps
-              color="secondary"
-              label="Cancelar"
-              :disable="guardando"
-              @click="emit('update:abierto', false)"
-            />
-            <q-btn
-              type="submit"
-              unelevated
-              no-caps
-              color="primary"
-              icon="lock_reset"
-              label="Restablecer contraseña"
-              :loading="guardando"
-              :disable="guardando"
-            >
-              <template #loading>
-                <q-spinner-oval size="18px" class="q-mr-sm" />
-                <span>Aplicando...</span>
-              </template>
-            </q-btn>
-          </div>
-        </q-form>
+          <q-btn
+            unelevated
+            no-caps
+            color="primary"
+            icon="lock_reset"
+            label="Confirmar restablecimiento"
+            :loading="guardando"
+            :disable="guardando"
+            @click="emit('confirmar')"
+          >
+            <template #loading>
+              <q-spinner-oval size="18px" class="q-mr-sm" />
+              <span>Aplicando...</span>
+            </template>
+          </q-btn>
+        </div>
       </q-card-section>
     </q-card>
   </q-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
 import type { User } from '@/stores/useUsersStore';
 
-const props = defineProps<{
+defineProps<{
   abierto: boolean;
   guardando: boolean;
   error: string | null;
@@ -112,33 +74,29 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:abierto': [valor: boolean];
-  confirmar: [nuevaPassword: string];
+  confirmar: [];
 }>();
-
-const nuevaPassword = ref('');
-const confirmacionPassword = ref('');
-const mostrarPassword = ref(false);
-
-watch(
-  () => props.abierto,
-  (abierto) => {
-    if (!abierto) return;
-    nuevaPassword.value = '';
-    confirmacionPassword.value = '';
-    mostrarPassword.value = false;
-  },
-);
-
-function generarClaveTemporal(): void {
-  const sufijo = Math.floor(1000 + Math.random() * 9000);
-  const generada = `Ti#${sufijo}HD`;
-  nuevaPassword.value = generada;
-  confirmacionPassword.value = generada;
-  mostrarPassword.value = true;
-}
-
-function alConfirmar(): void {
-  emit('confirmar', nuevaPassword.value.trim());
-}
 </script>
 
+<style scoped lang="scss">
+.dialog-card {
+  width: 100vw;
+  max-width: 480px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.dialog-header { border-bottom: 1px solid var(--border); }
+.muted { color: var(--muted); }
+.info-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.form-error {
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  color: var(--danger);
+  font-size: 0.84rem;
+}
+</style>

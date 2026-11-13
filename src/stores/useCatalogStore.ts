@@ -1,129 +1,146 @@
 import { defineStore } from 'pinia';
+import type { RespuestaApi } from '@/models/auth';
+import { api } from '@/services/api';
+import { extraerMensajeErrorApi } from '@/stores/useRolesStore';
 
-export type NaturalezaTrabajo =
-  | 'Incidencia'
-  | 'Requerimiento de Servicio'
-  | 'Desarrollo / Evolutivo'
-  | 'Actividad Interna / Preventiva';
-
-export type SubgerenciaDestino = 'Redes' | 'Soporte Técnico' | 'Aplicaciones' | 'Desarrollo';
-export type PrioridadSugerida = 'Crítica' | 'Alta' | 'Media' | 'Baja';
 export type EstadoServicio = 'Activo' | 'Inactivo';
+
+export interface CatalogoIncidenciaApi {
+  id: number;
+  nombre: string;
+  id_departamento: number;
+  codigo_departamento?: string;
+  departamento?: string;
+  id_prioridad: number;
+  prioridad?: string;
+  is_activo: boolean;
+}
 
 export interface ServiceCatalog {
   id: number;
   nombre: string;
-  naturaleza: NaturalezaTrabajo;
-  subgerenciaDestino: SubgerenciaDestino;
-  prioridadSugerida: PrioridadSugerida;
+  id_departamento: number;
+  codigo_departamento: string;
+  departamento: string;
+  id_prioridad: number;
+  prioridad: string;
+  is_activo: boolean;
   estado: EstadoServicio;
 }
 
 export interface ServiceCatalogPayload {
   nombre: string;
-  naturaleza: NaturalezaTrabajo;
-  subgerenciaDestino: SubgerenciaDestino;
-  prioridadSugerida: PrioridadSugerida;
-  estado: EstadoServicio;
+  id_departamento: number;
+  id_prioridad: number;
+  is_activo?: boolean;
 }
 
-export const OPCIONES_NATURALEZA: readonly NaturalezaTrabajo[] = [
-  'Incidencia',
-  'Requerimiento de Servicio',
-  'Desarrollo / Evolutivo',
-  'Actividad Interna / Preventiva',
-];
+function mapearServicio(item: CatalogoIncidenciaApi): ServiceCatalog {
+  return {
+    id: Number(item.id),
+    nombre: item.nombre.trim(),
+    id_departamento: Number(item.id_departamento),
+    codigo_departamento: (item.codigo_departamento ?? '').trim().toUpperCase(),
+    departamento: (item.departamento ?? '').trim(),
+    id_prioridad: Number(item.id_prioridad),
+    prioridad: (item.prioridad ?? '').trim(),
+    is_activo: Boolean(item.is_activo),
+    estado: item.is_activo ? 'Activo' : 'Inactivo',
+  };
+}
 
-export const OPCIONES_SUBGERENCIA: readonly SubgerenciaDestino[] = [
-  'Redes',
-  'Soporte Técnico',
-  'Aplicaciones',
-  'Desarrollo',
-];
-
-export const OPCIONES_PRIORIDAD: readonly PrioridadSugerida[] = ['Crítica', 'Alta', 'Media', 'Baja'];
-
-const MOCK_SERVICES: readonly ServiceCatalog[] = [
-  { id: 1, nombre: 'Falla o Caída de Enlace VPN Corporativo', naturaleza: 'Incidencia', subgerenciaDestino: 'Redes', prioridadSugerida: 'Crítica', estado: 'Activo' },
-  { id: 2, nombre: 'Falla de Impresora o Periférico de Red', naturaleza: 'Incidencia', subgerenciaDestino: 'Soporte Técnico', prioridadSugerida: 'Media', estado: 'Activo' },
-  { id: 3, nombre: 'Creación y Asignación de Usuario de Dominio', naturaleza: 'Requerimiento de Servicio', subgerenciaDestino: 'Soporte Técnico', prioridadSugerida: 'Media', estado: 'Activo' },
-  { id: 4, nombre: 'Instalación y Configuración de Software', naturaleza: 'Requerimiento de Servicio', subgerenciaDestino: 'Aplicaciones', prioridadSugerida: 'Baja', estado: 'Activo' },
-  { id: 5, nombre: 'Nuevo Módulo o Ajuste en ERP Corporativo', naturaleza: 'Desarrollo / Evolutivo', subgerenciaDestino: 'Desarrollo', prioridadSugerida: 'Media', estado: 'Activo' },
-  { id: 6, nombre: 'Desarrollo de Nuevo Reporte en Plataforma BI', naturaleza: 'Desarrollo / Evolutivo', subgerenciaDestino: 'Aplicaciones', prioridadSugerida: 'Baja', estado: 'Activo' },
-  { id: 7, nombre: 'Mantenimiento Preventivo a Servidores', naturaleza: 'Actividad Interna / Preventiva', subgerenciaDestino: 'Redes', prioridadSugerida: 'Alta', estado: 'Activo' },
-  { id: 8, nombre: 'Depuración y Respaldo Periódico de Bases de Datos', naturaleza: 'Actividad Interna / Preventiva', subgerenciaDestino: 'Desarrollo', prioridadSugerida: 'Crítica', estado: 'Activo' },
-  { id: 9, nombre: 'Acceso a Carpetas Compartidas Legacy', naturaleza: 'Requerimiento de Servicio', subgerenciaDestino: 'Soporte Técnico', prioridadSugerida: 'Baja', estado: 'Inactivo' },
-];
+interface CatalogState {
+  services: ServiceCatalog[];
+  cargando: boolean;
+  errorCarga: string | null;
+}
 
 export const useCatalogStore = defineStore('catalog', {
-  state: () => ({
-    services: MOCK_SERVICES.map((s) => ({ ...s })),
+  state: (): CatalogState => ({
+    services: [],
+    cargando: false,
+    errorCarga: null,
   }),
 
   getters: {
-    serviciosActivos: (state): ServiceCatalog[] =>
-      state.services.filter((s) => s.estado === 'Activo'),
-    serviciosPorNaturaleza: (state) => (nat: NaturalezaTrabajo) =>
-      state.services.filter((s) => s.naturaleza === nat && s.estado === 'Activo'),
+    serviciosActivos: (state): ServiceCatalog[] => state.services.filter((s) => s.is_activo),
   },
 
   actions: {
-    async agregarServicio(payload: ServiceCatalogPayload): Promise<ServiceCatalog> {
-      const nombreNorm = payload.nombre.trim().toLowerCase();
-      if (this.services.some((s) => s.nombre.trim().toLowerCase() === nombreNorm)) {
-        throw new Error('Ya existe un servicio registrado con este nombre.');
+    async cargarCatalogo(): Promise<ServiceCatalog[]> {
+      this.cargando = true;
+      this.errorCarga = null;
+      try {
+        const { data: respuesta } = await api.get<RespuestaApi<CatalogoIncidenciaApi[]>>(
+          '/catalogo-incidencias',
+        );
+        const lista = Array.isArray(respuesta.data) ? respuesta.data.map(mapearServicio) : [];
+        this.services = lista;
+        return lista;
+      } catch (err: unknown) {
+        const mensaje = extraerMensajeErrorApi(
+          err,
+          'No fue posible cargar el catálogo de incidencias.',
+        );
+        this.errorCarga = mensaje;
+        throw new Error(mensaje, { cause: err });
+      } finally {
+        this.cargando = false;
       }
-      // TODO: Integrar endpoint REST para Crear Servicio (POST /api/v1/admin/catalogo)
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      const siguienteId = this.services.reduce((max, s) => Math.max(max, s.id), 0) + 1;
-      const nuevo: ServiceCatalog = {
-        id: siguienteId,
-        nombre: payload.nombre.trim(),
-        naturaleza: payload.naturaleza,
-        subgerenciaDestino: payload.subgerenciaDestino,
-        prioridadSugerida: payload.prioridadSugerida,
-        estado: payload.estado,
-      };
-
-      this.services.unshift(nuevo);
-      return nuevo;
     },
 
-    async actualizarServicio(id: number, payload: ServiceCatalogPayload): Promise<ServiceCatalog> {
-      const idx = this.services.findIndex((s) => s.id === id);
-      if (idx === -1) throw new Error('No se encontró el servicio a actualizar.');
-
-      const nombreNorm = payload.nombre.trim().toLowerCase();
-      const duplicado = this.services.some(
-        (s) => s.id !== id && s.nombre.trim().toLowerCase() === nombreNorm,
-      );
-      if (duplicado) throw new Error('Ya existe otro servicio con ese nombre.');
-
-      // TODO: Integrar endpoint REST para Actualizar Servicio (PUT /api/v1/admin/catalogo/:id)
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      const actualizado: ServiceCatalog = {
-        id,
-        nombre: payload.nombre.trim(),
-        naturaleza: payload.naturaleza,
-        subgerenciaDestino: payload.subgerenciaDestino,
-        prioridadSugerida: payload.prioridadSugerida,
-        estado: payload.estado,
-      };
-
-      this.services[idx] = actualizado;
-      return actualizado;
+    async agregarServicio(payload: ServiceCatalogPayload): Promise<void> {
+      try {
+        await api.post<RespuestaApi<null>>('/catalogo-incidencias', {
+          nombre: payload.nombre.trim(),
+          id_departamento: Number(payload.id_departamento),
+          id_prioridad: Number(payload.id_prioridad),
+        });
+        await this.cargarCatalogo();
+      } catch (err: unknown) {
+        throw new Error(
+          extraerMensajeErrorApi(err, 'No fue posible registrar la incidencia en el catálogo.'),
+          { cause: err },
+        );
+      }
     },
 
-    async alternarEstado(id: number): Promise<ServiceCatalog> {
-      const servicio = this.services.find((s) => s.id === id);
-      if (!servicio) throw new Error('No se encontró el servicio.');
+    async actualizarServicio(id: number, payload: ServiceCatalogPayload): Promise<void> {
+      try {
+        const body: Record<string, unknown> = {
+          nombre: payload.nombre.trim(),
+          id_departamento: Number(payload.id_departamento),
+          id_prioridad: Number(payload.id_prioridad),
+        };
 
-      // TODO: Integrar endpoint REST para Cambiar Estado (Soft Delete) (PATCH /api/v1/admin/catalogo/:id/estado)
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      servicio.estado = servicio.estado === 'Activo' ? 'Inactivo' : 'Activo';
-      return servicio;
+        if (typeof payload.is_activo === 'boolean') {
+          body.is_activo = payload.is_activo;
+        }
+
+        await api.patch<RespuestaApi<null>>(`/catalogo-incidencias/${id}`, body);
+        await this.cargarCatalogo();
+      } catch (err: unknown) {
+        throw new Error(
+          extraerMensajeErrorApi(err, 'No fue posible actualizar la incidencia del catálogo.'),
+          { cause: err },
+        );
+      }
+    },
+
+    async alternarEstado(servicio: ServiceCatalog): Promise<EstadoServicio> {
+      const nuevoActivo = !servicio.is_activo;
+      try {
+        await api.patch<RespuestaApi<null>>(`/catalogo-incidencias/${servicio.id}`, {
+          is_activo: nuevoActivo,
+        });
+        await this.cargarCatalogo();
+        return nuevoActivo ? 'Activo' : 'Inactivo';
+      } catch (err: unknown) {
+        throw new Error(
+          extraerMensajeErrorApi(err, 'No se pudo cambiar el estado del servicio.'),
+          { cause: err },
+        );
+      }
     },
   },
 });

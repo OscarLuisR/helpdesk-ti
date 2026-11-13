@@ -1,231 +1,185 @@
 import { defineStore } from 'pinia';
-import type { RolUsuario } from '@/models/types';
+import type { RespuestaApi } from '@/models/auth';
+import { api } from '@/services/api';
+import { extraerMensajeErrorApi } from '@/stores/useRolesStore';
 
 export type EstadoUsuario = 'Activo' | 'Inactivo';
 
+export interface UsuarioApi {
+  id: number;
+  nombre_completo: string;
+  nick: string;
+  telefono: string;
+  is_activo: boolean;
+  is_new_user: boolean;
+  id_rol: number;
+  codigo_rol: string;
+  rol: string;
+  id_departamento: number;
+  codigo: string;
+  departamento: string;
+  tipo: string;
+  email: string | null;
+}
+
 export interface User {
   id: number;
-  nombre: string;
-  username: string;
+  nombre_completo: string;
+  nick: string;
   telefono: string;
+  email: string | null;
+  id_departamento: number;
+  codigo_departamento: string;
   departamento: string;
-  rol: RolUsuario;
+  tipo_departamento: string;
+  id_rol: number;
+  codigo_rol: string;
+  rol: string;
+  is_activo: boolean;
+  is_new_user: boolean;
   estado: EstadoUsuario;
-  fechaRegistro: string;
 }
 
 export interface UserFormPayload {
-  nombre: string;
-  username: string;
+  nombre_completo: string;
+  nick: string;
   telefono: string;
-  departamento: string;
-  rol: RolUsuario;
-  estado: EstadoUsuario;
+  email: string | null;
+  id_departamento: number;
+  id_rol: number;
+  is_activo?: boolean;
 }
 
-export const DEPARTAMENTOS_SISTEMA: readonly string[] = [
-  'Tecnología - Mesa Técnica',
-  'Tecnología - Soporte Técnico',
-  'Tecnología - Redes',
-  'Tecnología - Aplicaciones y Desarrollo',
-  'Gerencia General de Tecnología',
-  'Contabilidad y Finanzas',
-  'Ventas y Comercialización',
-  'Recursos Humanos',
-  'Almacén y Despacho',
-  'Compras y Suministros',
-];
-
-const MOCK_USERS: readonly User[] = [
-  {
-    id: 1,
-    nombre: 'Administrador TI',
-    username: 'admin',
-    telefono: '0412-2964550',
-    departamento: 'Gerencia General de Tecnología',
-    rol: 'ADMINISTRADOR',
-    estado: 'Activo',
-    fechaRegistro: '01/10/2026',
-  },
-  {
-    id: 2,
-    nombre: 'Ana Morales',
-    username: 'mesa.tecnica',
-    telefono: '0414-3819204',
-    departamento: 'Tecnología - Mesa Técnica',
-    rol: 'MESA_TECNICA',
-    estado: 'Activo',
-    fechaRegistro: '03/10/2026',
-  },
-  {
-    id: 3,
-    nombre: 'Roberto Silva',
-    username: 'gerente.redes',
-    telefono: '0412-7458319',
-    departamento: 'Tecnología - Redes',
-    rol: 'GERENTE_AREA',
-    estado: 'Activo',
-    fechaRegistro: '05/10/2026',
-  },
-  {
-    id: 4,
-    nombre: 'Patricia Vega',
-    username: 'gerente.soporte',
-    telefono: '0424-1948372',
-    departamento: 'Tecnología - Soporte Técnico',
-    rol: 'GERENTE_AREA',
-    estado: 'Activo',
-    fechaRegistro: '05/10/2026',
-  },
-  {
-    id: 5,
-    nombre: 'Luis Mendoza',
-    username: 'tecnico.01',
-    telefono: '0414-9026415',
-    departamento: 'Tecnología - Soporte Técnico',
-    rol: 'TECNICO',
-    estado: 'Activo',
-    fechaRegistro: '08/10/2026',
-  },
-  {
-    id: 6,
-    nombre: 'Diego Herrera',
-    username: 'tecnico.redes',
-    telefono: '0424-5183920',
-    departamento: 'Tecnología - Redes',
-    rol: 'TECNICO',
-    estado: 'Activo',
-    fechaRegistro: '10/10/2026',
-  },
-  {
-    id: 7,
-    nombre: 'Carlos Mendoza',
-    username: 'gerente.general',
-    telefono: '0412-8304716',
-    departamento: 'Gerencia General de Tecnología',
-    rol: 'GERENTE_GENERAL',
-    estado: 'Activo',
-    fechaRegistro: '01/10/2026',
-  },
-  {
-    id: 8,
-    nombre: 'María González',
-    username: 'solicitante',
-    telefono: '0416-6204918',
-    departamento: 'Contabilidad y Finanzas',
-    rol: 'USUARIO',
-    estado: 'Activo',
-    fechaRegistro: '12/10/2026',
-  },
-  {
-    id: 9,
-    nombre: 'Sofía Castro',
-    username: 'tecnico.apps',
-    telefono: '0412-4092831',
-    departamento: 'Tecnología - Aplicaciones y Desarrollo',
-    rol: 'TECNICO',
-    estado: 'Inactivo',
-    fechaRegistro: '14/10/2026',
-  },
-];
+function mapearUsuario(item: UsuarioApi): User {
+  return {
+    id: Number(item.id),
+    nombre_completo: item.nombre_completo.trim(),
+    nick: item.nick.trim().toLowerCase(),
+    telefono: item.telefono.trim(),
+    email: item.email ? item.email.trim() : null,
+    id_departamento: Number(item.id_departamento),
+    codigo_departamento: (item.codigo ?? '').trim().toUpperCase(),
+    departamento: (item.departamento ?? '').trim(),
+    tipo_departamento: (item.tipo ?? '').trim(),
+    id_rol: Number(item.id_rol),
+    codigo_rol: (item.codigo_rol ?? '').trim().toUpperCase(),
+    rol: (item.rol ?? '').trim(),
+    is_activo: Boolean(item.is_activo),
+    is_new_user: Boolean(item.is_new_user),
+    estado: item.is_activo ? 'Activo' : 'Inactivo',
+  };
+}
 
 interface UsersState {
   users: User[];
-}
-
-function formatearFechaActual(): string {
-  const hoy = new Date();
-  const dia = String(hoy.getDate()).padStart(2, '0');
-  const mes = String(hoy.getMonth() + 1).padStart(2, '0');
-  const anio = hoy.getFullYear();
-  return `${dia}/${mes}/${anio}`;
+  cargando: boolean;
+  errorCarga: string | null;
 }
 
 export const useUsersStore = defineStore('users', {
   state: (): UsersState => ({
-    users: MOCK_USERS.map((u) => ({ ...u })),
+    users: [],
+    cargando: false,
+    errorCarga: null,
   }),
 
   actions: {
-    async agregarUsuario(payload: UserFormPayload): Promise<User> {
-      const usernameNorm = payload.username.trim().toLowerCase();
-      const duplicado = this.users.some((u) => u.username.toLowerCase() === usernameNorm);
-      if (duplicado) {
-        throw new Error('Ya existe un usuario registrado con ese login.');
+    async cargarUsuarios(): Promise<User[]> {
+      this.cargando = true;
+      this.errorCarga = null;
+      try {
+        const { data: respuesta } = await api.get<RespuestaApi<UsuarioApi[]>>('/usuarios');
+        const lista = Array.isArray(respuesta.data) ? respuesta.data.map(mapearUsuario) : [];
+        this.users = lista;
+        return lista;
+      } catch (err: unknown) {
+        const mensaje = extraerMensajeErrorApi(
+          err,
+          'No fue posible cargar el listado de usuarios.',
+        );
+        this.errorCarga = mensaje;
+        throw new Error(mensaje, { cause: err });
+      } finally {
+        this.cargando = false;
       }
-
-      // TODO: Integrar endpoint REST para Crear Usuario (POST /api/v1/admin/usuarios)
-      await new Promise((resolve) => setTimeout(resolve, 350));
-
-      const siguienteId = this.users.reduce((max, u) => Math.max(max, u.id), 0) + 1;
-      const nuevo: User = {
-        id: siguienteId,
-        nombre: payload.nombre.trim(),
-        username: usernameNorm,
-        telefono: payload.telefono.trim(),
-        departamento: payload.departamento,
-        rol: payload.rol,
-        estado: payload.estado,
-        fechaRegistro: formatearFechaActual(),
-      };
-
-      this.users.unshift(nuevo);
-      return nuevo;
     },
 
-    async actualizarUsuario(id: number, payload: UserFormPayload): Promise<User> {
-      const idx = this.users.findIndex((u) => u.id === id);
-      if (idx === -1) {
-        throw new Error('No se encontró el usuario a actualizar.');
+    async agregarUsuario(payload: UserFormPayload): Promise<void> {
+      try {
+        const body: Record<string, unknown> = {
+          nombre_completo: payload.nombre_completo.trim(),
+          nick: payload.nick.trim().toLowerCase(),
+          telefono: payload.telefono.trim(),
+          id_departamento: Number(payload.id_departamento),
+          id_rol: Number(payload.id_rol),
+        };
+
+        if (payload.email && payload.email.trim().length > 0) {
+          body.email = payload.email.trim().toLowerCase();
+        }
+
+        await api.post<RespuestaApi<null>>('/usuarios', body);
+        await this.cargarUsuarios();
+      } catch (err: unknown) {
+        throw new Error(extraerMensajeErrorApi(err, 'No fue posible crear el usuario.'), {
+          cause: err,
+        });
       }
-
-      const usernameNorm = payload.username.trim().toLowerCase();
-      const duplicado = this.users.some(
-        (u) => u.id !== id && u.username.toLowerCase() === usernameNorm,
-      );
-      if (duplicado) {
-        throw new Error('Ese nombre de usuario ya está asignado a otra cuenta.');
-      }
-
-      // TODO: Integrar endpoint REST para Actualizar Usuario (PUT /api/v1/admin/usuarios/:id)
-      await new Promise((resolve) => setTimeout(resolve, 350));
-
-      const actual = this.users[idx]!;
-      const actualizado: User = {
-        id: actual.id,
-        nombre: payload.nombre.trim(),
-        username: usernameNorm,
-        telefono: payload.telefono.trim(),
-        departamento: payload.departamento,
-        rol: payload.rol,
-        estado: payload.estado,
-        fechaRegistro: actual.fechaRegistro,
-      };
-
-      this.users[idx] = actualizado;
-      return actualizado;
     },
 
-    async eliminarUsuario(id: number): Promise<void> {
-      const usuario = this.users.find((u) => u.id === id);
-      if (!usuario) return;
+    async actualizarUsuario(id: number, payload: UserFormPayload): Promise<void> {
+      try {
+        const body: Record<string, unknown> = {
+          nombre_completo: payload.nombre_completo.trim(),
+          nick: payload.nick.trim().toLowerCase(),
+          telefono: payload.telefono.trim(),
+          id_departamento: Number(payload.id_departamento),
+          id_rol: Number(payload.id_rol),
+          email:
+            payload.email && payload.email.trim().length > 0
+              ? payload.email.trim().toLowerCase()
+              : null,
+        };
 
-      // TODO: Integrar endpoint REST para Eliminar / Desactivar Usuario (DELETE /api/v1/admin/usuarios/:id)
-      await Promise.resolve();
-      usuario.estado = usuario.estado === 'Activo' ? 'Inactivo' : 'Activo';
+        if (typeof payload.is_activo === 'boolean') {
+          body.is_activo = payload.is_activo;
+        }
+
+        await api.patch<RespuestaApi<null>>(`/usuarios/${id}`, body);
+        await this.cargarUsuarios();
+      } catch (err: unknown) {
+        throw new Error(extraerMensajeErrorApi(err, 'No fue posible actualizar el usuario.'), {
+          cause: err,
+        });
+      }
     },
 
-    async resetearPasswordUsuario(id: number, nuevaPassword: string): Promise<void> {
-      const usuario = this.users.find((u) => u.id === id);
-      if (!usuario) {
-        throw new Error('No se encontró el usuario para restablecer la contraseña.');
+    async alternarEstadoUsuario(usuario: User): Promise<EstadoUsuario> {
+      const nuevoActivo = !usuario.is_activo;
+      try {
+        await api.patch<RespuestaApi<null>>(`/usuarios/${usuario.id}`, {
+          is_activo: nuevoActivo,
+        });
+        await this.cargarUsuarios();
+        return nuevoActivo ? 'Activo' : 'Inactivo';
+      } catch (err: unknown) {
+        throw new Error(
+          extraerMensajeErrorApi(err, 'No fue posible cambiar el estado del usuario.'),
+          { cause: err },
+        );
       }
-      if (nuevaPassword.trim().length < 8) {
-        throw new Error('La contraseña temporal debe tener al menos 8 caracteres.');
-      }
+    },
 
-      // TODO: Integrar endpoint REST para Resetear Contraseña de Usuario (POST /api/v1/admin/usuarios/:id/reset-password)
-      await new Promise((resolve) => setTimeout(resolve, 350));
+    async resetearPasswordUsuario(id: number): Promise<void> {
+      try {
+        await api.patch<RespuestaApi<null>>(`/usuarios/${id}/reset-password`);
+        await this.cargarUsuarios();
+      } catch (err: unknown) {
+        throw new Error(
+          extraerMensajeErrorApi(err, 'No fue posible restablecer la contraseña del usuario.'),
+          { cause: err },
+        );
+      }
     },
   },
 });

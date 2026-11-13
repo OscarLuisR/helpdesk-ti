@@ -1,10 +1,17 @@
 import { defineStore } from 'pinia';
 import { USUARIOS_MOCK } from '@/mocks/usuarios';
-import type { CredencialesLogin, UsuarioSesion } from '@/models/auth';
+import type {
+  CredencialesLogin,
+  PayloadUsuarioBackend,
+  RespuestaApi,
+  UsuarioSesion,
+} from '@/models/auth';
 import type { RolUsuario } from '@/models/types';
-
-// Clave temporal mientras no exista cookie de sesión HttpOnly desde el backend
-const SESSION_STORAGE_KEY = 'helpdesk_ti_sesion';
+import {
+  api,
+  registrarCallbacksSesionAuth,
+  type ConfiguracionPeticionExtendida,
+} from '@/services/api';
 
 const ROLES_VALIDOS: readonly RolUsuario[] = [
   'ADMINISTRADOR',
@@ -12,117 +19,177 @@ const ROLES_VALIDOS: readonly RolUsuario[] = [
   'GERENTE_AREA',
   'TECNICO',
   'GERENTE_GENERAL',
+  'USUARIO',
 ];
 
-function esUsuarioSesion(valor: unknown): valor is UsuarioSesion {
-  if (typeof valor !== 'object' || valor === null) return false;
-  const candidato = valor as Record<string, unknown>;
-  return (
-    typeof candidato.id === 'string' &&
-    typeof candidato.username === 'string' &&
-    typeof candidato.nombre === 'string' &&
-    typeof candidato.rol === 'string' &&
-    ROLES_VALIDOS.includes(candidato.rol as RolUsuario)
-  );
+function normalizarRolSistema(codigoRol?: string, rolNombre?: string): RolUsuario {
+  const candidato = (codigoRol || rolNombre || '').trim().toUpperCase();
+  if (ROLES_VALIDOS.includes(candidato as RolUsuario)) {
+    return candidato as RolUsuario;
+  }
+  return 'USUARIO';
 }
 
-function leerSesionGuardada(): UsuarioSesion | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    return esUsuarioSesion(parsed) ? parsed : null;
-  } catch {
-    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
-    return null;
+export function mapearPayloadASesion(payload: PayloadUsuarioBackend): UsuarioSesion {
+  const rol = normalizarRolSistema(payload.codigo_rol, payload.rol);
+
+  return {
+    id: String(payload.id),
+    username: payload.nick.trim(),
+    nombre: payload.nombre_completo.trim(),
+    rol,
+    rolNombre: payload.rol.trim(),
+    telefono: payload.telefono.trim(),
+    is_new_user: Boolean(payload.is_new_user),
+    // 🛡️ [FASE 2.3 - TICKETS] Propagamos id_departamento del payload backend a la sesión
+    ...(payload.id_departamento !== undefined
+      ? { id_departamento: Number(payload.id_departamento) }
+      : {}),
+  };
+}
+
+function redirigirALoginNavegador(): void {
+  if (typeof window === 'undefined') return;
+  const hashActual = window.location.hash;
+  const pathActual = window.location.pathname;
+
+  if (hashActual.startsWith('#')) {
+    if (hashActual !== '#/' && hashActual !== '#') {
+      window.location.hash = '#/';
+    }
+    return;
+  }
+
+  if (pathActual !== '/') {
+    window.location.assign('/');
   }
 }
 
 interface AuthState {
   usuario: UsuarioSesion | null;
   role: RolUsuario;
+  /** Indica si ya se verificó la sesión inicial contra `GET /auth/me` tras cargar o recargar la SPA. */
+  hidratado: boolean;
 }
 
+let promesaHidratacionEnCurso: Promise<UsuarioSesion | null> | null = null;
+
 export const useAuthStore = defineStore('auth', {
-  state: (): AuthState => {
-    const sesion = leerSesionGuardada();
-    return {
-      // TODO: Al conectar el backend, hidratar sesión llamando a GET /api/v1/auth/me (vía cookie HttpOnly)
-      usuario: sesion,
-      role: sesion?.rol ?? 'TECNICO',
-    };
-  },
+  state: (): AuthState => ({
+    usuario: null,
+    role: 'USUARIO',
+    hidratado: false,
+  }),
 
   getters: {
     isAuthenticated: (state): boolean => state.usuario !== null,
     rolActual: (state): RolUsuario => state.role,
+    requiereCambioContrasena: (state): boolean => state.usuario?.is_new_user === true,
   },
 
   actions: {
-    async autenticar(credenciales: CredencialesLogin): Promise<UsuarioSesion> {
-      const usernameNormalizado = credenciales.username.trim().toLowerCase();
+    inicializarInterceptores(): void {
+      registrarCallbacksSesionAuth({
+        alRenovarSesion: (payload: PayloadUsuarioBackend) => {
+          this.establecerSesionDesdeBackend(payload);
+        },
+        alExpirarSesion: (forzarRedireccion: boolean) => {
+          this.limpiarEstadoLocal();
+          if (forzarRedireccion) {
+            redirigirALoginNavegador();
+          }
+        },
+      });
+    },
 
-      // TODO: Integrar endpoint POST /api/v1/auth/login (el backend setea cookie de sesión HttpOnly y retorna UsuarioSesion)
-      // const { data } = await api.post<UsuarioSesion>('/auth/login', {
-      //   username: usernameNormalizado,
-      //   password: credenciales.password,
-      // });
-      // this.usuario = data;
-      // this.role = data.rol;
-      // return data;
-
-      await new Promise((resolve) => setTimeout(resolve, 700));
-
-      const encontrado = USUARIOS_MOCK.find(
-        (u) =>
-          u.username.toLowerCase() === usernameNormalizado &&
-          u.passwordMock === credenciales.password,
-      );
-
-      if (!encontrado) {
-        throw new Error('Usuario o contraseña incorrectos.');
-      }
-
-      const sesion: UsuarioSesion = {
-        id: encontrado.id,
-        username: encontrado.username,
-        nombre: encontrado.nombre,
-        rol: encontrado.rol,
-        ...(encontrado.area ? { area: encontrado.area } : {}),
-      };
-
+    establecerSesionDesdeBackend(payload: PayloadUsuarioBackend): UsuarioSesion {
+      const sesion = mapearPayloadASesion(payload);
       this.usuario = sesion;
       this.role = sesion.rol;
-      window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sesion));
+      this.hidratado = true;
       return sesion;
     },
 
-    // TODO: Eliminar esta acción simuladora de rol antes de pasar a producción.
+    limpiarEstadoLocal(): void {
+      this.usuario = null;
+      this.role = 'USUARIO';
+      this.hidratado = true;
+    },
+
+    /**
+     * Hidrata la sesión activa al iniciar o recargar la aplicación (F5) consultando `GET /auth/me`.
+     * Si el `access_token` venció pero el `refresh_token` sigue vigente, el interceptor de `api.ts`
+     * ejecuta el Silent Refresh automáticamente y reintenta `/auth/me`.
+     */
+    async hidratarSesion(forzar = false): Promise<UsuarioSesion | null> {
+      this.inicializarInterceptores();
+
+      if (this.hidratado && !forzar) {
+        return this.usuario;
+      }
+
+      if (promesaHidratacionEnCurso) {
+        return promesaHidratacionEnCurso;
+      }
+
+      promesaHidratacionEnCurso = (async () => {
+        try {
+          const config: Partial<ConfiguracionPeticionExtendida> = {
+            _omitirRedireccionAuth: true,
+          };
+          const { data: respuesta } = await api.get<RespuestaApi<PayloadUsuarioBackend>>(
+            '/auth/me',
+            config,
+          );
+          return this.establecerSesionDesdeBackend(respuesta.data);
+        } catch {
+          this.limpiarEstadoLocal();
+          return null;
+        } finally {
+          promesaHidratacionEnCurso = null;
+        }
+      })();
+
+      return promesaHidratacionEnCurso;
+    },
+
+    async autenticar(credenciales: CredencialesLogin): Promise<UsuarioSesion> {
+      this.inicializarInterceptores();
+      const nickNormalizado = credenciales.username.trim();
+
+      const { data: respuesta } = await api.post<RespuestaApi<PayloadUsuarioBackend>>(
+        '/auth/login',
+        {
+          nick: nickNormalizado,
+          password: credenciales.password,
+        },
+      );
+
+      return this.establecerSesionDesdeBackend(respuesta.data);
+    },
+
+    // Mantenido temporalmente para compatibilidad con AppHeader hasta limpiar simulador de desarrollo
     cambiarRolDesarrollo(nuevoRol: RolUsuario): void {
       this.role = nuevoRol;
       const mockDelRol = USUARIOS_MOCK.find((u) => u.rol === nuevoRol);
       if (this.usuario && mockDelRol) {
-        const sesionActualizada: UsuarioSesion = {
-          id: mockDelRol.id,
-          username: mockDelRol.username,
-          nombre: mockDelRol.nombre,
+        this.usuario = {
+          ...this.usuario,
           rol: nuevoRol,
           ...(mockDelRol.area ? { area: mockDelRol.area } : {}),
         };
-        this.usuario = sesionActualizada;
-        window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sesionActualizada));
       }
     },
 
     async cerrarSesion(): Promise<void> {
-      // TODO: Integrar endpoint POST /api/v1/auth/logout para invalidar la cookie de sesión en el backend
-      // await api.post('/auth/logout');
-
-      await Promise.resolve();
-      this.usuario = null;
-      this.role = 'TECNICO';
-      window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      this.inicializarInterceptores();
+      try {
+        await api.post('/auth/logout');
+      } catch {
+        // Incluso si falla la red o la sesión ya expiró, limpiamos el estado local
+      } finally {
+        this.limpiarEstadoLocal();
+      }
     },
   },
 });
