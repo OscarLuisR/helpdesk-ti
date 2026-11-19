@@ -17,7 +17,7 @@
             {{
               usuarioEditar
                 ? 'Actualiza los datos, departamento o rol del usuario.'
-                : 'Registra una nueva cuenta corporativa (clave inicial por defecto: 123456).'
+                : `Registra una nueva cuenta corporativa (clave inicial por defecto: ${configuracionesStore.claveTemporalDefecto}).`
             }}
           </div>
         </div>
@@ -30,7 +30,7 @@
           {{ error }}
         </q-banner>
 
-        <q-form @submit.prevent="alGuardar">
+        <q-form ref="formRef" @submit.prevent="alGuardar">
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6">
               <q-input
@@ -145,19 +145,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { useQuasar } from 'quasar';
+import { computed, nextTick, ref, watch } from 'vue';
+import { useQuasar, type QForm } from 'quasar';
 import {
   formatearTelefonoMask,
   validarEmailUsuario,
   validarTelefonoUsuario,
   validarUsernameLogin,
 } from '@/composables/useUsersView';
-import type { Department } from '@/stores/useDepartmentsStore';
+import { useConfiguracionesStore } from '@/stores/useConfiguracionesStore';
+import { esDepartamentoTI, type Department } from '@/stores/useDepartmentsStore';
 import type { RolItem } from '@/stores/useRolesStore';
 import type { User, UserFormPayload } from '@/stores/useUsersStore';
 
 const $q = useQuasar();
+const configuracionesStore = useConfiguracionesStore();
 const props = defineProps<{
   abierto: boolean;
   guardando: boolean;
@@ -178,16 +180,29 @@ const telefono = ref('');
 const email = ref('');
 const idDepartamento = ref<number | null>(null);
 const idRol = ref<number | null>(null);
+const formRef = ref<QForm | null>(null);
 const activoToggle = ref(true);
+
+// 🛡️ [FASE 2 - REGLA OPERATIVA TI] Por ahora solo personal directo de TI (tipos 1 y 2) y roles técnicos/gerenciales
+const ROLES_TI_PERMITIDOS = new Set<string>([
+  'DIRECTOR',
+  'GERENTE_AREA',
+  'MESA_TECNICA',
+  'TECNICO',
+]);
 
 const opcionesDepartamento = computed(() =>
   props.departamentos.filter(
-    (d) => d.is_activo || d.id === props.usuarioEditar?.id_departamento,
+    (d) => (d.is_activo && esDepartamentoTI(d)) || d.id === props.usuarioEditar?.id_departamento,
   ),
 );
 
 const opcionesRol = computed(() =>
-  props.roles.filter((r) => r.is_activo || r.id === props.usuarioEditar?.id_rol),
+  props.roles.filter(
+    (r) =>
+      (r.is_activo && ROLES_TI_PERMITIDOS.has(r.codigo.trim().toUpperCase())) ||
+      r.id === props.usuarioEditar?.id_rol,
+  ),
 );
 
 watch(
@@ -207,11 +222,12 @@ watch(
       nick.value = '';
       telefono.value = '';
       email.value = '';
-      idDepartamento.value = opcionesDepartamento.value[0]?.id ?? null;
-      const rolUsuarioDefecto = opcionesRol.value.find((r) => r.codigo === 'USUARIO');
-      idRol.value = rolUsuarioDefecto?.id ?? opcionesRol.value[0]?.id ?? null;
+      // 🛡️ Sin preselección al crear: obliga a elegir explícitamente departamento y rol
+      idDepartamento.value = null;
+      idRol.value = null;
       activoToggle.value = true;
     }
+    void nextTick(() => formRef.value?.resetValidation());
   },
 );
 

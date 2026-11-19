@@ -20,6 +20,16 @@
   --warning: #d97706;
   --info: #0284c7;
 
+  // 🛡️ [FASE 3] Paleta semántica específica para cada uno de los 7 estados del ticket
+  --st-total: #1e3a5f;
+  --st-abierto: #dc2626;
+  --st-asignado: #0284c7;
+  --st-progreso: #0f766e;
+  --st-espera: #d97706;
+  --st-verificar: #16a34a;
+  --st-reabierto: #7c3aed;
+  --st-cerrado: #475569;
+
   --radius: 10px;
   --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.04);
   --shadow-hover: 0 6px 20px rgba(15, 23, 42, 0.08);
@@ -165,6 +175,15 @@ h1, h2, h3, h4 {
   &.info    { background: rgba(2, 132, 199, 0.12);   color: var(--info); }
   &.brand   { background: rgba(15, 118, 110, 0.12);  color: var(--primary); }
   &.neutral { background: rgba(100, 116, 139, 0.12); color: var(--muted); }
+
+  // 🛡️ [FASE 3] Colores únicos por estado de ticket en todas las tablas y diálogos
+  &.estado-abierto   { background: rgba(220, 38, 38, 0.13);  color: var(--st-abierto); }
+  &.estado-asignado  { background: rgba(2, 132, 199, 0.13);  color: var(--st-asignado); }
+  &.estado-progreso  { background: rgba(15, 118, 110, 0.14); color: var(--st-progreso); }
+  &.estado-espera    { background: rgba(217, 119, 6, 0.14);  color: var(--st-espera); }
+  &.estado-verificar { background: rgba(22, 163, 74, 0.14);  color: var(--st-verificar); }
+  &.estado-reabierto { background: rgba(124, 58, 237, 0.14); color: var(--st-reabierto); }
+  &.estado-cerrado   { background: rgba(71, 85, 105, 0.14);  color: var(--st-cerrado); }
 }
 
 .table-pro {

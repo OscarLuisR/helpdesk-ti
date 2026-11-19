@@ -18,7 +18,7 @@ const ROLES_VALIDOS: readonly RolUsuario[] = [
   'MESA_TECNICA',
   'GERENTE_AREA',
   'TECNICO',
-  'GERENTE_GENERAL',
+  'DIRECTOR',
   'USUARIO',
 ];
 

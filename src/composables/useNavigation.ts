@@ -52,6 +52,12 @@ export const OPCIONES_ADMINISTRATIVAS: readonly MenuItem[] = [
     icono: 'category',
     ruta: '/admin/catalogo',
   },
+  {
+    id: 'admin-configuraciones',
+    titulo: 'Configuraciones',
+    icono: 'tune',
+    ruta: '/admin/configuraciones',
+  },
 ];
 
 /** Mapa estricto de opciones del menú lateral según los 6 roles del sistema. */
@@ -67,11 +73,17 @@ export const MENU_POR_ROL: Record<RolUsuario, readonly MenuItem[]> = {
 
   MESA_TECNICA: [
     {
+      id: 'mesa-dashboard',
+      titulo: 'Tablero Principal',
+      icono: 'space_dashboard',
+      ruta: '/dashboard',
+      seccion: 'Operación Mesa',
+    },
+    {
       id: 'tickets-nuevo',
       titulo: 'Nuevo Ticket',
       icono: 'add_box',
       ruta: '/tickets/nuevo',
-      seccion: 'Operación Mesa',
     },
     {
       id: 'tickets-recepcion',
@@ -85,16 +97,16 @@ export const MENU_POR_ROL: Record<RolUsuario, readonly MenuItem[]> = {
       icono: 'task_alt',
       ruta: '/tickets/cierre',
     },
-    {
-      id: 'tickets-carga',
-      titulo: 'Carga Técnica',
-      icono: 'engineering',
-      ruta: '/tickets/carga-tecnica',
-    },
     ...OPCIONES_ADMINISTRATIVAS,
   ],
 
   GERENTE_AREA: [
+    {
+      id: 'gerencia-metricas',
+      titulo: 'Tablero de Área',
+      icono: 'space_dashboard',
+      ruta: '/gerencia/metricas',
+    },
     {
       id: 'gerencia-bandeja',
       titulo: 'Bandeja de Área',
@@ -107,15 +119,15 @@ export const MENU_POR_ROL: Record<RolUsuario, readonly MenuItem[]> = {
       icono: 'balance',
       ruta: '/gerencia/asignacion',
     },
-    {
-      id: 'gerencia-metricas',
-      titulo: 'Mis Indicadores',
-      icono: 'analytics',
-      ruta: '/gerencia/metricas',
-    },
   ],
 
   TECNICO: [
+    {
+      id: 'tecnico-dashboard',
+      titulo: 'Mi Tablero',
+      icono: 'space_dashboard',
+      ruta: '/dashboard',
+    },
     {
       id: 'tecnico-cola',
       titulo: 'Mi Cola de Trabajo',
@@ -130,12 +142,18 @@ export const MENU_POR_ROL: Record<RolUsuario, readonly MenuItem[]> = {
     },
   ],
 
-  GERENTE_GENERAL: [
+  DIRECTOR: [
     {
       id: 'dashboard-ejecutivo',
       titulo: 'Tablero Ejecutivo 360',
       icono: 'insert_chart_outlined',
       ruta: '/dashboard/ejecutivo',
+    },
+    {
+      id: 'dashboard-recepcion',
+      titulo: 'Recepción Global',
+      icono: 'inbox',
+      ruta: '/tickets/recepcion',
     },
     {
       id: 'dashboard-reportes',
@@ -145,14 +163,20 @@ export const MENU_POR_ROL: Record<RolUsuario, readonly MenuItem[]> = {
     },
   ],
 
-  // 🛡️ [FASE 2.3 - TICKETS] Administrador también tiene acceso directo a creación y recepción de tickets
+  // 🛡️ [FASE 2.3 / 3 - TICKETS] Administrador inicia en Tablero Principal con acceso a creación, recepción y maestros
   ADMINISTRADOR: [
+    {
+      id: 'admin-dashboard',
+      titulo: 'Tablero Principal',
+      icono: 'space_dashboard',
+      ruta: '/dashboard',
+      seccion: 'Operación Tickets',
+    },
     {
       id: 'admin-tickets-nuevo',
       titulo: 'Nuevo Ticket',
       icono: 'add_box',
       ruta: '/tickets/nuevo',
-      seccion: 'Operación Tickets',
     },
     {
       id: 'admin-tickets-recepcion',

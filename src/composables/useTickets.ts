@@ -31,13 +31,13 @@ export function claseChipPrioridad(prioridad: string): string {
 }
 
 export const ESTADO_CLASS: Record<EstadoTicket, string> = {
-  Abierto: 'neutral',
-  Asignado: 'info',
-  'En Progreso': 'brand',
-  'En Espera': 'warn',
-  'Resuelto - Por Verificar': 'ok',
-  Cerrado: 'neutral',
-  Reabierto: 'bad',
+  Abierto: 'estado-abierto',
+  Asignado: 'estado-asignado',
+  'En Progreso': 'estado-progreso',
+  'En Espera': 'estado-espera',
+  'Resuelto - Por Verificar': 'estado-verificar',
+  Cerrado: 'estado-cerrado',
+  Reabierto: 'estado-reabierto',
 };
 
 const AVATAR_COLORES = [

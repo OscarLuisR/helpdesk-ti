@@ -8,7 +8,7 @@ import {
   type ServiceCatalog,
   type ServiceCatalogPayload,
 } from '@/stores/useCatalogStore';
-import { useDepartmentsStore, type Department } from '@/stores/useDepartmentsStore';
+import { esDepartamentoTI, useDepartmentsStore, type Department } from '@/stores/useDepartmentsStore';
 import { usePrioridadesStore, type PrioridadItem } from '@/stores/usePrioridadesStore';
 
 export const COLUMNAS_CATALOGO: QTableColumn<ServiceCatalog>[] = [
@@ -69,12 +69,15 @@ export function useCatalogView() {
   const departamentosCatalogo = computed<Department[]>(() => departmentsStore.departments);
   const prioridadesCatalogo = computed<PrioridadItem[]>(() => prioridadesStore.prioridades);
 
+  // 🛡️ [FASE 2 - REGLA OPERATIVA TI] Solo departamentos del área de TI (tipos 1 y 2) y sin prefijo de código
   const opcionesFiltroDepartamento = computed<OpcionSelectCatalogo[]>(() => [
     { valor: 'TODAS', etiqueta: 'Todos los departamentos' },
-    ...departmentsStore.departments.map((d) => ({
-      valor: d.id,
-      etiqueta: `${d.codigo} — ${d.nombre}`,
-    })),
+    ...departmentsStore.departments
+      .filter((d) => esDepartamentoTI(d))
+      .map((d) => ({
+        valor: d.id,
+        etiqueta: d.nombre,
+      })),
   ]);
 
   const opcionesFiltroPrioridad = computed<OpcionSelectCatalogo[]>(() => [

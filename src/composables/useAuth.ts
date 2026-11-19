@@ -25,23 +25,23 @@ function formatearSegundos(totalSegundos: number): string {
   return `${minutos}:${String(restoSegundos).padStart(2, '0')} min`;
 }
 
-// 🛡️ [FASE 2.3 - TICKETS] Ruta de aterrizaje real según el rol autenticado
+// 🛡️ [FASE 2.3 / 3 - TICKETS] Ruta de aterrizaje real según el rol autenticado (Dashboard principal adaptativo)
 export function rutaInicioPorRol(rol: RolUsuario): string {
   switch (rol) {
     case 'ADMINISTRADOR':
-      return '/admin/roles';
+      return '/dashboard';
     case 'MESA_TECNICA':
-      return '/tickets/recepcion';
+      return '/dashboard';
     case 'GERENTE_AREA':
-      return '/gerencia/bandeja';
+      return '/gerencia/metricas';
     case 'TECNICO':
-      return '/tecnico/mis-tickets';
-    case 'GERENTE_GENERAL':
-      return '/tickets/recepcion';
+      return '/dashboard';
+    case 'DIRECTOR':
+      return '/dashboard/ejecutivo';
     case 'USUARIO':
       return '/usuario/mis-solicitudes';
     default:
-      return '/tecnico/mis-tickets';
+      return '/dashboard';
   }
 }
 

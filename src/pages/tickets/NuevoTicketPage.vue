@@ -5,7 +5,7 @@
       <div class="col-12 col-sm-auto">
         <h1 class="page-title">Registrar Nuevo Ticket</h1>
         <p class="page-subtitle">
-          Selecciona al usuario solicitante y la incidencia del catálogo para calcular automáticamente su prioridad SLA y área responsable.
+          Selecciona el departamento solicitante, registra los datos de contacto y elige la incidencia del catálogo para calcular automáticamente su prioridad SLA y área responsable.
         </p>
       </div>
       <div class="col-12 col-sm-auto">
@@ -30,14 +30,72 @@
             {{ errorFormulario }}
           </div>
 
-          <q-form class="q-gutter-y-md" @submit.prevent="enviarFormulario">
+          <q-banner
+            v-if="advertenciaAdjuntos"
+            dense
+            rounded
+            class="form-warning q-mb-md"
+            role="alert"
+          >
+            <template #avatar>
+              <q-icon name="warning_amber" color="warning" size="24px" />
+            </template>
+            <div class="text-weight-bold text-dark">
+              Ticket {{ advertenciaAdjuntos.folio }} creado con advertencia en adjuntos
+            </div>
+            <div class="text-caption text-dark q-mt-xs">
+              El ticket se registró correctamente
+              <template v-if="advertenciaAdjuntos.exitosas > 0">
+                ({{ advertenciaAdjuntos.exitosas }} de {{ advertenciaAdjuntos.totalIntentadas }}
+                imágenes subidas),
+              </template>
+              pero no se {{ advertenciaAdjuntos.fallidas.length === 1 ? 'pudo subir la imagen' : 'pudieron subir las imágenes' }}:
+            </div>
+            <ul class="q-my-xs q-pl-md text-caption text-dark">
+              <li v-for="errImg in advertenciaAdjuntos.fallidas" :key="errImg.nombre">
+                <strong>{{ errImg.nombre }}:</strong> {{ errImg.motivo }}
+              </li>
+            </ul>
+            <div class="text-caption text-dark">
+              Puedes cargar {{ advertenciaAdjuntos.fallidas.length === 1 ? 'la imagen pendiente' : 'las imágenes pendientes' }} desde el módulo de <strong>Adjuntos</strong> del ticket.
+            </div>
+            <template #action>
+              <q-btn
+                flat
+                no-caps
+                color="primary"
+                icon="attach_file"
+                label="Ir a Adjuntos del ticket"
+                :to="{
+                  path: '/tickets/recepcion',
+                  query: { folio: advertenciaAdjuntos.folio, tab: 'adjuntos' },
+                }"
+              />
+              <q-btn
+                flat
+                round
+                dense
+                icon="close"
+                color="grey-7"
+                aria-label="Cerrar advertencia"
+                @click="advertenciaAdjuntos = null"
+              />
+            </template>
+          </q-banner>
+
+          <q-form
+            ref="formRef"
+            class="q-gutter-y-md"
+            @submit.prevent="enviarFormulario"
+            @paste="alPegarImagen"
+          >
             <div>
-              <label class="field-label">Usuario Solicitante *</label>
+              <label class="field-label">Departamento Solicitante *</label>
               <q-select
-                v-model="form.id_usuario_solicitante"
-                :options="opcionesUsuariosFiltradas"
+                v-model="form.id_departamento_solicitante"
+                :options="opcionesDepartamentosFiltradas"
                 option-value="id"
-                :option-label="(u) => `${u.nombre_completo} (${u.nick}) — ${u.departamento}`"
+                option-label="nombre"
                 emit-value
                 map-options
                 use-input
@@ -45,19 +103,72 @@
                 outlined
                 dense
                 clearable
-                :loading="usersStore.cargando"
-                placeholder="Buscar por nombre, nick o departamento..."
-                :rules="[(v) => (v !== null && v > 0) || 'Selecciona el usuario solicitante.']"
-                @filter="filtrarUsuarios"
+                :loading="departmentsStore.cargando"
+                placeholder="Buscar departamento solicitante..."
+                :rules="[(v) => (v !== null && v > 0) || 'Selecciona el departamento solicitante.']"
+                @filter="filtrarDepartamentos"
+                @update:model-value="alCambiarDepartamentoSolicitante"
               >
                 <template #no-option>
                   <q-item>
                     <q-item-section class="text-grey">
-                      No se encontraron usuarios activos
+                      No se encontraron departamentos activos
                     </q-item-section>
                   </q-item>
                 </template>
               </q-select>
+            </div>
+
+            <!-- 🛡️ [FASE 3.1 / 3.2 - SOLICITANTES] Fila adaptada con botón de búsqueda habilitado solo tras elegir departamento -->
+            <div class="row q-col-gutter-md items-start">
+              <div class="col-12 col-sm-6">
+                <label class="field-label">Nombre del Solicitante *</label>
+                <q-input
+                  v-model="form.solicitante_nombre"
+                  outlined
+                  dense
+                  maxlength="100"
+                  placeholder="Ej. Ana Valencia"
+                  :rules="[
+                    (v: string) =>
+                      (v?.trim().length ?? 0) >= 3 ||
+                      'Ingresa el nombre del solicitante (mín. 3 caracteres).',
+                    (v: string) => (v?.trim().length ?? 0) <= 100 || 'Máximo 100 caracteres.',
+                  ]"
+                />
+              </div>
+              <div class="col-12 col-sm-auto">
+                <label class="field-label gt-xs">&nbsp;</label>
+                <q-btn
+                  outline
+                  no-caps
+                  color="primary"
+                  icon="search"
+                  label="Buscar"
+                  class="full-width btn-buscar-solicitante"
+                  :disable="!form.id_departamento_solicitante"
+                  @click="buscadorSolicitanteAbierto = true"
+                >
+                  <q-tooltip>
+                    {{
+                      form.id_departamento_solicitante
+                        ? 'Buscar solicitante registrado en este departamento'
+                        : 'Selecciona primero un departamento solicitante'
+                    }}
+                  </q-tooltip>
+                </q-btn>
+              </div>
+              <div class="col-12 col-sm">
+                <label class="field-label">Teléfono de Contacto *</label>
+                <q-input
+                  v-model="form.solicitante_telefono"
+                  outlined
+                  dense
+                  mask="####-#######"
+                  placeholder="0412-1234567"
+                  :rules="[validarTelefonoUsuario]"
+                />
+              </div>
             </div>
 
             <div>
@@ -106,13 +217,127 @@
               />
             </div>
 
-            <div class="row justify-end q-gutter-sm q-pt-sm">
+            <!-- 🛡️ [FASE 3 - EVIDENCIAS EN APERTURA] Hasta 3 imágenes con validación de formato, peso y Magic Bytes -->
+            <div>
+              <div class="row items-center justify-between q-mb-xs">
+                <label class="field-label q-mb-none">
+                  Imágenes de Evidencia (Opcional · {{ imagenesAdjuntas.length }}/{{ maxImagenesPermitidas }})
+                </label>
+                <span class="text-caption muted">
+                  PNG, JPG o WEBP · máx. {{ configuracionesStore.tamanoMaxAdjuntoMb }} MB c/u
+                </span>
+              </div>
+
+              <input
+                ref="inputImagenesRef"
+                type="file"
+                accept=".png,.jpg,.jpeg,.webp"
+                multiple
+                class="hidden"
+                @change="alSeleccionarArchivos"
+              />
+
+              <div
+                class="dropzone-evidencia q-pa-md"
+                :class="{
+                  'dropzone-evidencia--activa': arrastrandoImagen,
+                  'dropzone-evidencia--llena': imagenesAdjuntas.length >= maxImagenesPermitidas,
+                }"
+                @dragover.prevent="arrastrandoImagen = true"
+                @dragleave.prevent="arrastrandoImagen = false"
+                @drop.prevent="alSoltarArchivos"
+              >
+                <div class="row items-center justify-between q-col-gutter-sm">
+                  <div class="col-12 col-sm row items-center no-wrap q-gutter-x-sm">
+                    <q-icon name="add_photo_alternate" size="28px" color="primary" />
+                    <div>
+                      <div class="text-body2 text-weight-medium text-dark">
+                        Arrastra imágenes aquí, selecciona archivos o pega una captura (Ctrl+V)
+                      </div>
+                      <div class="text-caption muted">
+                        Útil para capturas enviadas por correo o WhatsApp al reportar la falla.
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-12 col-sm-auto">
+                    <q-btn
+                      outline
+                      no-caps
+                      color="primary"
+                      icon="upload_file"
+                      label="Seleccionar imágenes"
+                      :disable="enviando || validandoImagenes || imagenesAdjuntas.length >= maxImagenesPermitidas"
+                      :loading="validandoImagenes"
+                      @click="abrirSelectorImagenes"
+                    />
+                  </div>
+                </div>
+
+                <div v-if="imagenesAdjuntas.length" class="row q-col-gutter-sm q-mt-sm">
+                  <div
+                    v-for="item in imagenesAdjuntas"
+                    :key="item.idLocal"
+                    class="col-12 col-sm-4"
+                  >
+                    <div class="preview-card-item">
+                      <img :src="item.previewUrl" :alt="item.file.name" class="preview-thumb" />
+                      <div class="preview-meta q-pa-xs">
+                        <div class="text-caption text-weight-medium text-dark ellipsis">
+                          {{ item.file.name }}
+                          <q-tooltip>{{ item.file.name }}</q-tooltip>
+                        </div>
+                        <div class="row items-center justify-between q-mt-xs">
+                          <span class="text-caption muted">
+                            {{ formatearTamanoArchivo(item.file.size) }}
+                          </span>
+                          <span
+                            class="chip"
+                            :class="
+                              item.estado === 'subiendo'
+                                ? 'info'
+                                : item.estado === 'subido'
+                                  ? 'ok'
+                                  : 'neutral'
+                            "
+                          >
+                            {{
+                              item.estado === 'subiendo'
+                                ? 'Subiendo...'
+                                : item.estado === 'subido'
+                                  ? 'Subida'
+                                  : 'Verificada'
+                            }}
+                          </span>
+                        </div>
+                      </div>
+                      <q-btn
+                        round
+                        dense
+                        unelevated
+                        size="xs"
+                        icon="close"
+                        color="dark"
+                        class="preview-remove-btn"
+                        :disable="enviando"
+                        aria-label="Quitar imagen"
+                        @click="eliminarImagen(item.idLocal)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row items-center justify-end q-gutter-sm q-pt-sm">
+              <span v-if="textoProgresoSubida" class="text-caption muted q-mr-sm">
+                {{ textoProgresoSubida }}
+              </span>
               <q-btn
                 flat
                 no-caps
                 color="grey-7"
                 label="Limpiar"
-                :disable="ticketStore.guardando"
+                :disable="enviando || ticketStore.guardando"
                 @click="limpiarFormulario"
               />
               <q-btn
@@ -122,7 +347,8 @@
                 color="primary"
                 icon="confirmation_number"
                 label="Registrar Ticket"
-                :loading="ticketStore.guardando"
+                :loading="enviando || ticketStore.guardando"
+                :disable="validandoImagenes"
               />
             </div>
           </q-form>
@@ -192,50 +418,194 @@
             <div class="text-caption text-positive text-weight-bold text-uppercase">
               Último Ticket Generado
             </div>
-            <div class="text-h6 text-weight-bold text-dark q-mt-xs">
-              {{ ultimoFolioCreado }}
+            <div class="row items-center justify-between q-mt-xs">
+              <div class="text-h6 text-weight-bold text-dark">
+                {{ ultimoFolioCreado }}
+              </div>
+              <q-btn
+                flat
+                dense
+                no-caps
+                size="sm"
+                color="primary"
+                icon="attach_file"
+                label="Ver / Adjuntos"
+                :to="{
+                  path: '/tickets/recepcion',
+                  query: { folio: ultimoFolioCreado, tab: 'adjuntos' },
+                }"
+              />
             </div>
           </div>
         </q-card>
       </div>
     </div>
+    <BuscarSolicitanteDialog
+      v-model="buscadorSolicitanteAbierto"
+      :texto-inicial="form.solicitante_nombre"
+      :id-departamento-inicial="form.id_departamento_solicitante"
+      @seleccionar="alSeleccionarSolicitante"
+    />
+
+    <!-- 🛡️ [FASE 3.2 - SOLICITANTES] Confirmación explícita al modificar o coincidir en el mismo departamento -->
+    <q-dialog v-model="confirmarSolicitanteAbierto" persistent>
+      <q-card class="confirmar-solicitante-card">
+        <q-card-section class="row items-center justify-between dialog-header q-pa-sm">
+          <div class="row items-center q-gutter-x-xs">
+            <q-icon name="manage_accounts" color="primary" size="20px" />
+            <span class="text-subtitle2 text-weight-bold text-dark">
+              Confirmar datos del solicitante
+            </span>
+          </div>
+          <q-btn
+            flat
+            round
+            dense
+            icon="close"
+            color="grey-7"
+            :disable="enviando"
+            @click="confirmarSolicitanteAbierto = false"
+          />
+        </q-card-section>
+
+        <q-card-section v-if="candidatoSolicitante" class="q-pa-md q-gutter-y-sm text-body2">
+          <div class="text-dark">
+            Existe un solicitante registrado en
+            <strong>{{ candidatoSolicitante.departamento }}</strong> con datos coincidentes:
+          </div>
+          <div class="sla-row q-pa-sm">
+            <div class="text-caption muted text-uppercase">Registro actual en BD</div>
+            <div class="text-weight-bold text-dark">
+              {{ candidatoSolicitante.nombre_completo }} · {{ candidatoSolicitante.telefono }}
+            </div>
+          </div>
+          <div class="sla-row q-pa-sm">
+            <div class="text-caption muted text-uppercase">Nuevos datos ingresados</div>
+            <div class="text-weight-bold text-primary">
+              {{ form.solicitante_nombre.trim() }} ·
+              {{ formatearTelefonoMask(form.solicitante_telefono) }}
+            </div>
+          </div>
+          <div class="text-caption muted">
+            ¿Deseas actualizar ese registro existente o guardarlo como un solicitante nuevo?
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-sm q-gutter-xs">
+          <q-btn
+            flat
+            no-caps
+            color="grey-7"
+            label="Cancelar"
+            :disable="enviando"
+            @click="confirmarSolicitanteAbierto = false"
+          />
+          <q-btn
+            outline
+            no-caps
+            color="secondary"
+            label="Crear nuevo"
+            :disable="enviando"
+            @click="confirmarAccionSolicitante('nuevo')"
+          />
+          <q-btn
+            unelevated
+            no-caps
+            color="primary"
+            label="Actualizar existente"
+            :loading="enviando"
+            @click="confirmarAccionSolicitante('actualizar')"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useQuasar } from 'quasar';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { useQuasar, type QForm } from 'quasar';
+import BuscarSolicitanteDialog from '@/components/tickets/BuscarSolicitanteDialog.vue';
 import { claseChipPrioridad } from '@/composables/useTickets';
+import type { SolicitanteItem } from '@/models/types';
+import { formatearTelefonoMask, validarTelefonoUsuario } from '@/composables/useUsersView';
 import { useCatalogStore, type ServiceCatalog } from '@/stores/useCatalogStore';
+import { useConfiguracionesStore } from '@/stores/useConfiguracionesStore';
+import { useDepartmentsStore, type Department } from '@/stores/useDepartmentsStore';
 import { usePrioridadesStore } from '@/stores/usePrioridadesStore';
 import { useTicketStore } from '@/stores/ticketStore';
-import { useUsersStore, type User } from '@/stores/useUsersStore';
+import {
+  formatearTamanoArchivo,
+  validarArchivoImagenSeguro,
+} from '@/utils/adjuntos';
+
+interface ImagenAdjuntaLocal {
+  idLocal: string;
+  file: File;
+  previewUrl: string;
+  estado: 'listo' | 'subiendo' | 'subido';
+}
+
+interface AdvertenciaAdjuntos {
+  folio: string;
+  totalIntentadas: number;
+  exitosas: number;
+  fallidas: Array<{ nombre: string; motivo: string }>;
+}
 
 const $q = useQuasar();
-const usersStore = useUsersStore();
+const departmentsStore = useDepartmentsStore();
 const catalogStore = useCatalogStore();
+const configuracionesStore = useConfiguracionesStore();
 const prioridadesStore = usePrioridadesStore();
 const ticketStore = useTicketStore();
 
+const formRef = ref<QForm | null>(null);
+const inputImagenesRef = ref<HTMLInputElement | null>(null);
 const form = reactive({
-  id_usuario_solicitante: null as number | null,
+  id_solicitante: null as number | null,
+  id_departamento_solicitante: null as number | null,
+  solicitante_nombre: '',
+  solicitante_telefono: '',
   id_catalogo: null as number | null,
   descripcion_incidencia: '',
 });
 
+const buscadorSolicitanteAbierto = ref(false);
+// 🛡️ [FASE 3.2 - SOLICITANTES] Control de edición vs inserción en el mismo departamento
+const solicitanteOriginal = ref<SolicitanteItem | null>(null);
+const candidatoSolicitante = ref<SolicitanteItem | null>(null);
+const confirmarSolicitanteAbierto = ref(false);
+
 const errorFormulario = ref<string | null>(null);
+const advertenciaAdjuntos = ref<AdvertenciaAdjuntos | null>(null);
 const ultimoFolioCreado = ref<string | null>(null);
-const filtroUsuarioTexto = ref('');
+const filtroDepartamentoTexto = ref('');
 const filtroCatalogoTexto = ref('');
 
-const usuariosActivos = computed(() => usersStore.users.filter((u) => u.is_activo));
-const catalogoActivo = computed(() => catalogStore.serviciosActivos);
+const imagenesAdjuntas = ref<ImagenAdjuntaLocal[]>([]);
+const arrastrandoImagen = ref(false);
+const validandoImagenes = ref(false);
+const enviando = ref(false);
+const textoProgresoSubida = ref<string | null>(null);
 
-const opcionesUsuariosFiltradas = computed<User[]>(() => {
-  const q = filtroUsuarioTexto.value.trim().toLowerCase();
-  if (!q) return usuariosActivos.value;
-  return usuariosActivos.value.filter((u) =>
-    [u.nombre_completo, u.nick, u.departamento].some((v) => v.toLowerCase().includes(q)),
+const departamentosActivos = computed(() => departmentsStore.departamentosActivos);
+const catalogoActivo = computed(() => catalogStore.serviciosActivos);
+const maxImagenesPermitidas = computed(() =>
+  Math.max(
+    1,
+    Math.min(
+      configuracionesStore.maxImagenesNuevoTicket,
+      configuracionesStore.maxAdjuntosPorTicket,
+    ),
+  ),
+);
+
+const opcionesDepartamentosFiltradas = computed<Department[]>(() => {
+  const q = filtroDepartamentoTexto.value.trim().toLowerCase();
+  if (!q) return departamentosActivos.value;
+  return departamentosActivos.value.filter((d) =>
+    [d.nombre, d.codigo, d.tipo_departamento].some((v) => v.toLowerCase().includes(q)),
   );
 });
 
@@ -261,9 +631,9 @@ const prioridadCalculada = computed(() => {
   );
 });
 
-function filtrarUsuarios(val: string, update: (fn: () => void) => void): void {
+function filtrarDepartamentos(val: string, update: (fn: () => void) => void): void {
   update(() => {
-    filtroUsuarioTexto.value = val;
+    filtroDepartamentoTexto.value = val;
   });
 }
 
@@ -273,47 +643,380 @@ function filtrarCatalogo(val: string, update: (fn: () => void) => void): void {
   });
 }
 
-function limpiarFormulario(): void {
-  form.id_usuario_solicitante = null;
+function abrirSelectorImagenes(): void {
+  inputImagenesRef.value?.click();
+}
+
+function liberarPreviewsImagenes(): void {
+  for (const item of imagenesAdjuntas.value) {
+    URL.revokeObjectURL(item.previewUrl);
+  }
+  imagenesAdjuntas.value = [];
+}
+
+function eliminarImagen(idLocal: string): void {
+  const idx = imagenesAdjuntas.value.findIndex((i) => i.idLocal === idLocal);
+  if (idx < 0) return;
+  const [removido] = imagenesAdjuntas.value.splice(idx, 1);
+  if (removido) {
+    URL.revokeObjectURL(removido.previewUrl);
+  }
+}
+
+async function agregarArchivos(lista: File[]): Promise<void> {
+  if (!lista.length || enviando.value) return;
+
+  validandoImagenes.value = true;
+  try {
+    for (const file of lista) {
+      if (imagenesAdjuntas.value.length >= maxImagenesPermitidas.value) {
+        $q.notify({
+          type: 'warning',
+          message: `Límite alcanzado: máximo ${maxImagenesPermitidas.value} ${maxImagenesPermitidas.value === 1 ? 'imagen' : 'imágenes'} al registrar según la política vigente.`,
+          position: 'top-right',
+          timeout: 3500,
+        });
+        break;
+      }
+
+      const duplicado = imagenesAdjuntas.value.some(
+        (i) =>
+          i.file.name === file.name &&
+          i.file.size === file.size &&
+          i.file.lastModified === file.lastModified,
+      );
+      if (duplicado) {
+        $q.notify({
+          type: 'info',
+          message: `La imagen "${file.name}" ya está agregada.`,
+          position: 'top-right',
+          timeout: 2200,
+        });
+        continue;
+      }
+
+      const validacion = await validarArchivoImagenSeguro(
+        file,
+        configuracionesStore.tamanoMaxAdjuntoMb,
+      );
+      if (!validacion.valido) {
+        $q.notify({
+          type: 'negative',
+          message: validacion.motivo ?? 'Archivo de imagen inválido.',
+          position: 'top-right',
+          timeout: 4000,
+        });
+        continue;
+      }
+
+      imagenesAdjuntas.value.push({
+        idLocal: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        file,
+        previewUrl: URL.createObjectURL(file),
+        estado: 'listo',
+      });
+    }
+  } finally {
+    validandoImagenes.value = false;
+  }
+}
+
+function alSeleccionarArchivos(ev: Event): void {
+  const input = ev.target as HTMLInputElement;
+  const archivos = input.files ? Array.from(input.files) : [];
+  input.value = '';
+  void agregarArchivos(archivos);
+}
+
+function alSoltarArchivos(ev: DragEvent): void {
+  arrastrandoImagen.value = false;
+  const archivos = ev.dataTransfer?.files ? Array.from(ev.dataTransfer.files) : [];
+  void agregarArchivos(archivos);
+}
+
+function alPegarImagen(ev: ClipboardEvent): void {
+  const items = ev.clipboardData?.items;
+  if (!items) return;
+
+  const archivosPegados: File[] = [];
+  for (const item of Array.from(items)) {
+    if (item.kind !== 'file' || !item.type.startsWith('image/')) continue;
+    const blob = item.getAsFile();
+    if (!blob) continue;
+    const ext =
+      item.type === 'image/jpeg'
+        ? 'jpg'
+        : item.type === 'image/webp'
+          ? 'webp'
+          : item.type === 'image/png'
+            ? 'png'
+            : 'png';
+    const nombreFinal =
+      blob.name && blob.name !== 'image.png'
+        ? blob.name
+        : `captura-${Date.now()}-${archivosPegados.length + 1}.${ext}`;
+    archivosPegados.push(new File([blob], nombreFinal, { type: item.type }));
+  }
+
+  if (archivosPegados.length > 0) {
+    ev.preventDefault();
+    void agregarArchivos(archivosPegados);
+  }
+}
+
+function alSeleccionarSolicitante(solicitante: SolicitanteItem): void {
+  solicitanteOriginal.value = { ...solicitante };
+  form.id_solicitante = solicitante.id;
+  form.id_departamento_solicitante = solicitante.id_departamento;
+  form.solicitante_nombre = solicitante.nombre_completo;
+  form.solicitante_telefono = formatearTelefonoMask(solicitante.telefono);
+}
+
+function alCambiarDepartamentoSolicitante(): void {
+  // Si se cambia a otro departamento distinto al del solicitante elegido, será una inserción nueva
+  if (
+    solicitanteOriginal.value &&
+    form.id_departamento_solicitante !== solicitanteOriginal.value.id_departamento
+  ) {
+    form.id_solicitante = null;
+    solicitanteOriginal.value = null;
+  }
+}
+
+function limpiarCamposTexto(): void {
+  solicitanteOriginal.value = null;
+  candidatoSolicitante.value = null;
+  confirmarSolicitanteAbierto.value = false;
+  form.id_solicitante = null;
+  form.id_departamento_solicitante = null;
+  form.solicitante_nombre = '';
+  form.solicitante_telefono = '';
   form.id_catalogo = null;
   form.descripcion_incidencia = '';
   errorFormulario.value = null;
+  liberarPreviewsImagenes();
+  void nextTick(() => formRef.value?.resetValidation());
+}
+
+function limpiarFormulario(): void {
+  advertenciaAdjuntos.value = null;
+  limpiarCamposTexto();
+}
+
+function buscarCoincidenciaCercana(
+  lista: SolicitanteItem[],
+  nombreIngresado: string,
+  telefonoIngresado: string,
+): { exacto: SolicitanteItem | null; cercano: SolicitanteItem | null } {
+  const nombreNorm = nombreIngresado.trim().toLowerCase();
+  const exacto =
+    lista.find((s) => s.nombre_completo.trim().toLowerCase() === nombreNorm) ?? null;
+  if (exacto) {
+    return { exacto, cercano: null };
+  }
+
+  const cercano =
+    lista.find((s) => {
+      const sNombre = s.nombre_completo.trim().toLowerCase();
+      const sTel = formatearTelefonoMask(s.telefono);
+      const coincideNombreParcial =
+        nombreNorm.length >= 4 && (sNombre.includes(nombreNorm) || nombreNorm.includes(sNombre));
+      const coincideTelefono = sTel === telefonoIngresado;
+      return coincideNombreParcial || coincideTelefono;
+    }) ?? null;
+
+  return { exacto: null, cercano };
+}
+
+async function confirmarAccionSolicitante(modo: 'actualizar' | 'nuevo'): Promise<void> {
+  const idTarget = modo === 'actualizar' ? candidatoSolicitante.value?.id : undefined;
+  confirmarSolicitanteAbierto.value = false;
+  await ejecutarRegistroTicket({ modo, ...(idTarget ? { idSolicitante: idTarget } : {}) });
 }
 
 async function enviarFormulario(): Promise<void> {
+  if (enviando.value || ticketStore.guardando || validandoImagenes.value) return;
+
   errorFormulario.value = null;
-  if (!form.id_usuario_solicitante || !form.id_catalogo) {
-    errorFormulario.value = 'Debes seleccionar el usuario solicitante y la incidencia del catálogo.';
+  advertenciaAdjuntos.value = null;
+  const telefonoArmado = formatearTelefonoMask(form.solicitante_telefono);
+  if (
+    !form.id_departamento_solicitante ||
+    form.solicitante_nombre.trim().length < 3 ||
+    validarTelefonoUsuario(telefonoArmado) !== true ||
+    !form.id_catalogo
+  ) {
+    errorFormulario.value =
+      'Completa el departamento solicitante, nombre y teléfono de contacto, e incidencia del catálogo.';
     return;
   }
 
-  try {
-    const creado = await ticketStore.crearTicket({
-      id_usuario_solicitante: form.id_usuario_solicitante,
-      id_catalogo: form.id_catalogo,
-      descripcion_incidencia: form.descripcion_incidencia.trim(),
+  const nombreIngresado = form.solicitante_nombre.trim();
+
+  // Caso 1: Seleccionó un solicitante en el mismo departamento y modificó nombre o teléfono
+  if (
+    solicitanteOriginal.value &&
+    form.id_departamento_solicitante === solicitanteOriginal.value.id_departamento
+  ) {
+    const cambioNombre =
+      nombreIngresado.toLowerCase() !==
+      solicitanteOriginal.value.nombre_completo.trim().toLowerCase();
+    const cambioTelefono =
+      telefonoArmado !== formatearTelefonoMask(solicitanteOriginal.value.telefono);
+
+    if (cambioNombre || cambioTelefono) {
+      candidatoSolicitante.value = solicitanteOriginal.value;
+      confirmarSolicitanteAbierto.value = true;
+      return;
+    }
+
+    await ejecutarRegistroTicket({
+      modo: 'vincular',
+      idSolicitante: solicitanteOriginal.value.id,
     });
+    return;
+  }
+
+  // Caso 2: Escritura manual (o cambio de departamento) -> verificar coincidencias en el departamento destino
+  try {
+    const existentesDpto = await ticketStore.buscarSolicitantes(
+      undefined,
+      form.id_departamento_solicitante,
+    );
+    const { exacto, cercano } = buscarCoincidenciaCercana(
+      existentesDpto,
+      nombreIngresado,
+      telefonoArmado,
+    );
+
+    if (exacto) {
+      const telExacto = formatearTelefonoMask(exacto.telefono);
+      if (telExacto !== telefonoArmado) {
+        candidatoSolicitante.value = exacto;
+        confirmarSolicitanteAbierto.value = true;
+        return;
+      }
+      await ejecutarRegistroTicket({ modo: 'vincular', idSolicitante: exacto.id });
+      return;
+    }
+
+    if (cercano) {
+      candidatoSolicitante.value = cercano;
+      confirmarSolicitanteAbierto.value = true;
+      return;
+    }
+  } catch {
+    // Si falla la preconsulta no bloquea el registro normal
+  }
+
+  await ejecutarRegistroTicket({ modo: 'nuevo' });
+}
+
+async function ejecutarRegistroTicket(opciones: {
+  modo: 'vincular' | 'actualizar' | 'nuevo';
+  idSolicitante?: number;
+}): Promise<void> {
+  if (!form.id_departamento_solicitante || !form.id_catalogo) return;
+
+  const telefonoArmado = formatearTelefonoMask(form.solicitante_telefono);
+  enviando.value = true;
+  textoProgresoSubida.value = null;
+
+  try {
+    // 1. Registrar el ticket principal con la acción elegida sobre public.solicitantes
+    const payloadTicket =
+      opciones.modo === 'nuevo' || !opciones.idSolicitante
+        ? {
+            id_departamento_solicitante: form.id_departamento_solicitante,
+            solicitante_nombre: form.solicitante_nombre.trim(),
+            solicitante_telefono: telefonoArmado,
+            id_catalogo: form.id_catalogo,
+            descripcion_incidencia: form.descripcion_incidencia.trim(),
+          }
+        : {
+            id_solicitante: opciones.idSolicitante,
+            actualizar_solicitante: opciones.modo === 'actualizar',
+            ...(opciones.modo === 'actualizar'
+              ? { solicitante_nombre: form.solicitante_nombre.trim() }
+              : {}),
+            solicitante_telefono: telefonoArmado,
+            id_catalogo: form.id_catalogo,
+            descripcion_incidencia: form.descripcion_incidencia.trim(),
+          };
+
+    const creado = await ticketStore.crearTicket(payloadTicket);
 
     ultimoFolioCreado.value = creado.folio;
-    $q.notify({
-      type: 'positive',
-      message: `Ticket ${creado.folio} registrado correctamente.`,
-      position: 'top-right',
-      timeout: 3500,
-    });
-    limpiarFormulario();
+
+    // 2. Subir secuencialmente las imágenes validadas (si hay) al endpoint seguro /:id/adjuntos
+    const totalImagenes = imagenesAdjuntas.value.length;
+    let exitosas = 0;
+    const fallidas: Array<{ nombre: string; motivo: string }> = [];
+
+    for (const [idx, item] of imagenesAdjuntas.value.entries()) {
+      item.estado = 'subiendo';
+      textoProgresoSubida.value = `Subiendo imagen ${idx + 1} de ${totalImagenes}...`;
+      try {
+        await ticketStore.subirAdjunto(creado.id, item.file);
+        item.estado = 'subido';
+        exitosas += 1;
+      } catch (errImg: unknown) {
+        fallidas.push({
+          nombre: item.file.name,
+          motivo:
+            errImg instanceof Error ? errImg.message : 'Error inesperado al subir la imagen.',
+        });
+      }
+    }
+
+    // Limpiar el formulario tras crear el ticket para evitar envíos duplicados
+    limpiarCamposTexto();
+
+    if (fallidas.length === 0) {
+      const detalleImg =
+        exitosas > 0
+          ? ` con ${exitosas} ${exitosas === 1 ? 'imagen adjunta' : 'imágenes adjuntas'}`
+          : '';
+      $q.notify({
+        type: 'positive',
+        message: `Ticket ${creado.folio} registrado correctamente${detalleImg}.`,
+        position: 'top-right',
+        timeout: 4000,
+      });
+    } else {
+      advertenciaAdjuntos.value = {
+        folio: creado.folio,
+        totalIntentadas: totalImagenes,
+        exitosas,
+        fallidas,
+      };
+      $q.notify({
+        type: 'warning',
+        message: `Ticket ${creado.folio} creado, pero ${fallidas.length} ${fallidas.length === 1 ? 'imagen falló' : 'imágenes fallaron'}. Puedes subirla desde Adjuntos.`,
+        position: 'top-right',
+        timeout: 5500,
+      });
+    }
   } catch (err: unknown) {
     errorFormulario.value =
       err instanceof Error ? err.message : 'No fue posible registrar el ticket.';
+  } finally {
+    enviando.value = false;
+    textoProgresoSubida.value = null;
   }
 }
+
+onBeforeUnmount(() => {
+  liberarPreviewsImagenes();
+});
 
 onMounted(async () => {
   try {
     await Promise.all([
-      usersStore.cargarUsuarios(),
+      departmentsStore.cargarDepartamentos(),
       catalogStore.cargarCatalogo(),
       prioridadesStore.cargarPrioridades(),
+      configuracionesStore.cargarOperativas(),
     ]);
   } catch (err: unknown) {
     errorFormulario.value =
@@ -333,6 +1036,16 @@ onMounted(async () => {
   margin-bottom: 6px;
 }
 
+.btn-buscar-solicitante {
+  height: 40px;
+}
+
+.confirmar-solicitante-card {
+  width: 100%;
+  max-width: 480px;
+  border-radius: var(--radius);
+}
+
 .sla-row {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -343,5 +1056,49 @@ onMounted(async () => {
   background: rgba(22, 163, 74, 0.08);
   border: 1px solid rgba(22, 163, 74, 0.25);
   border-radius: 8px;
+}
+
+.form-warning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.dropzone-evidencia {
+  background: var(--bg);
+  border: 1.5px dashed var(--border);
+  border-radius: 10px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+
+  &--activa {
+    border-color: var(--primary);
+    background: rgba(15, 118, 110, 0.06);
+  }
+
+  &--llena {
+    border-style: solid;
+  }
+}
+
+.preview-card-item {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.preview-thumb {
+  display: block;
+  width: 100%;
+  height: 112px;
+  object-fit: cover;
+  background: #f1f5f9;
+}
+
+.preview-remove-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  opacity: 0.9;
 }
 </style>

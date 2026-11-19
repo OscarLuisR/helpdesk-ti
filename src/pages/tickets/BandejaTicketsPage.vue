@@ -169,15 +169,16 @@
     <TicketDetalleDialog
       v-model="dialogoAbierto"
       :ticket="ticketSeleccionado"
+      :tab-inicial="tabInicialDialogo"
       @actualizado="recargarTickets"
     />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { QTableColumn } from 'quasar';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import TicketDetalleDialog from '@/components/tickets/TicketDetalleDialog.vue';
 import TicketsToolbar from '@/components/tickets/TicketsToolbar.vue';
 import {
@@ -191,6 +192,7 @@ import type { EstadoTicket, Ticket } from '@/models/types';
 import { useAuthStore } from '@/stores/authStore';
 
 const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 
 const modoRuta = computed(() => route.meta.modoBandeja as string | undefined);
@@ -208,6 +210,8 @@ const {
 
 const ticketSeleccionado = ref<Ticket | null>(null);
 const dialogoAbierto = ref(false);
+const tabInicialDialogo = ref<'resumen' | 'comentarios' | 'adjuntos' | 'bitacora'>('resumen');
+const folioQueryProcesado = ref<string | null>(null);
 
 const puedeCrearTicket = computed(
   () => authStore.role === 'ADMINISTRADOR' || authStore.role === 'MESA_TECNICA',
@@ -247,10 +251,55 @@ const subtituloBandeja = computed(() => {
   }
 });
 
-function abrirDetalle(ticket: Ticket): void {
+function abrirDetalle(
+  ticket: Ticket,
+  tab: 'resumen' | 'comentarios' | 'adjuntos' | 'bitacora' = 'resumen',
+): void {
+  tabInicialDialogo.value = tab;
   ticketSeleccionado.value = ticket;
   dialogoAbierto.value = true;
 }
+
+watch(
+  [
+    () => route.query.folio,
+    () => route.query.estado,
+    () => route.query.busqueda,
+    () => ticketsFiltrados.value,
+  ],
+  ([folioParam, estadoParam, busquedaParam]) => {
+    if (typeof estadoParam === 'string' && estadoParam.trim()) {
+      const est = estadoParam.trim() as EstadoTicket;
+      if (estadosDisponibles.includes(est)) {
+        estadosFiltro.value = [est];
+      }
+      void router.replace({ path: route.path });
+      return;
+    }
+
+    if (typeof busquedaParam === 'string' && busquedaParam.trim()) {
+      busqueda.value = busquedaParam.trim();
+      estadosFiltro.value = [];
+      void router.replace({ path: route.path });
+      return;
+    }
+
+    const folioBuscado = typeof folioParam === 'string' ? folioParam.trim().toUpperCase() : '';
+    if (!folioBuscado || folioQueryProcesado.value === folioBuscado) return;
+
+    const match = ticketsFiltrados.value.find(
+      (t) => t.folio.trim().toUpperCase() === folioBuscado,
+    );
+    if (!match) return;
+
+    folioQueryProcesado.value = folioBuscado;
+    busqueda.value = folioBuscado;
+    const tab = route.query.tab === 'adjuntos' ? 'adjuntos' : 'resumen';
+    abrirDetalle(match, tab);
+    void router.replace({ path: route.path });
+  },
+  { immediate: true },
+);
 
 const columns: QTableColumn<Ticket>[] = [
   { name: 'folio', label: 'Folio', field: 'folio', align: 'left', sortable: true },

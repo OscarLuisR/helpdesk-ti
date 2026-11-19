@@ -26,7 +26,7 @@
           {{ error }}
         </q-banner>
 
-        <q-form @submit.prevent="alGuardar">
+        <q-form ref="formRef" @submit.prevent="alGuardar">
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-4">
               <q-input
@@ -140,8 +140,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { useQuasar } from 'quasar';
+import { nextTick, ref, watch } from 'vue';
+import { useQuasar, type QForm } from 'quasar';
 import type { Department, DepartmentFormPayload } from '@/stores/useDepartmentsStore';
 import type { TipoDepartamentoItem } from '@/stores/useTipoDepartamentosStore';
 
@@ -167,6 +167,7 @@ const responsable = ref('');
 const telefono = ref('');
 const ubicacion = ref('');
 const idTipoDepartamento = ref<number | null>(null);
+const formRef = ref<QForm | null>(null);
 const activoToggle = ref(true);
 
 watch(
@@ -187,9 +188,11 @@ watch(
       responsable.value = '';
       telefono.value = '';
       ubicacion.value = '';
-      idTipoDepartamento.value = props.tiposDepartamento[0]?.id ?? null;
+      // 🛡️ Sin preselección al crear: obliga a elegir explícitamente el tipo de departamento
+      idTipoDepartamento.value = null;
       activoToggle.value = true;
     }
+    void nextTick(() => formRef.value?.resetValidation());
   },
 );
 

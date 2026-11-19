@@ -168,7 +168,7 @@
               no-caps
               dense
               icon="check_circle"
-              label="Marcar Resuelto"
+              :label="ticket.estado === 'Abierto' ? 'Resolver en Nivel 1' : 'Marcar Resuelto'"
               @click="seleccionarAccion('Resuelto - Por Verificar')"
             />
             <q-btn
@@ -207,12 +207,16 @@
               map-options
               outlined
               dense
-              label="Técnico especialista *"
+              :label="esTicketMesaTecnica ? 'Responsable de Mesa Técnica *' : 'Técnico especialista *'"
               :loading="cargandoTecnicos"
               :hint="
                 opcionesTecnicos.length
-                  ? 'Solo técnicos activos del área responsable'
-                  : 'No hay técnicos activos en esta área'
+                  ? esTicketMesaTecnica
+                    ? 'Personal activo de Mesa Técnica (TI-MT)'
+                    : 'Solo técnicos activos del área responsable'
+                  : esTicketMesaTecnica
+                    ? 'No hay operadores activos en Mesa Técnica'
+                    : 'No hay técnicos activos en esta área'
               "
             />
 
@@ -337,7 +341,7 @@
                   <div v-if="item.motivo_pausa" class="text-caption text-warning q-mt-xs">
                     <strong>Motivo de pausa:</strong> {{ item.motivo_pausa }}
                   </div>
-                  <div v-if="item.comentario" class="text-caption muted q-mt-xs">
+                  <div v-if="item.comentario" class="text-caption muted q-mt-xs whitespace-preline">
                     {{ item.comentario }}
                   </div>
                 </q-timeline-entry>
@@ -368,6 +372,7 @@ import { useTicketStore } from '@/stores/ticketStore';
 const props = defineProps<{
   modelValue: boolean;
   ticket: Ticket | null;
+  tabInicial?: 'resumen' | 'comentarios' | 'adjuntos' | 'bitacora';
 }>();
 
 const emit = defineEmits<{
@@ -399,11 +404,15 @@ const form = reactive({
 const rol = computed(() => authStore.role);
 const idUsuario = computed(() => Number(authStore.usuario?.id ?? 0));
 
+const esTicketMesaTecnica = computed(
+  () => props.ticket?.codigo_departamento?.trim().toUpperCase() === 'TI-MT',
+);
+
 const esTecnicoAsignado = computed(
   () =>
-    rol.value === 'TECNICO' &&
     props.ticket !== null &&
-    Number(props.ticket.id_tecnico) === idUsuario.value,
+    Number(props.ticket.id_tecnico) === idUsuario.value &&
+    (rol.value === 'TECNICO' || (rol.value === 'MESA_TECNICA' && esTicketMesaTecnica.value)),
 );
 
 const puedeAsignar = computed(() => {
@@ -433,9 +442,15 @@ const puedePausar = computed(
   () => props.ticket?.estado === 'En Progreso' && esTecnicoAsignado.value,
 );
 
-const puedeResolver = computed(
-  () => props.ticket?.estado === 'En Progreso' && esTecnicoAsignado.value,
-);
+const puedeResolver = computed(() => {
+  if (!props.ticket) return false;
+  if (props.ticket.estado === 'En Progreso' && esTecnicoAsignado.value) return true;
+  return (
+    props.ticket.estado === 'Abierto' &&
+    rol.value === 'MESA_TECNICA' &&
+    esTicketMesaTecnica.value
+  );
+});
 
 const puedeCerrar = computed(
   () => props.ticket?.estado === 'Resuelto - Por Verificar' && rol.value === 'MESA_TECNICA',
@@ -458,7 +473,7 @@ const tieneAccionesDisponibles = computed(
 );
 
 function resetearFormulario(): void {
-  tabActiva.value = 'resumen';
+  tabActiva.value = props.tabInicial ?? 'resumen';
   accionActiva.value = null;
   errorAccion.value = null;
   form.id_tecnico = null;

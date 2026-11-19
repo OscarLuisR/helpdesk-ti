@@ -26,7 +26,7 @@
             <q-icon name="info_outline" color="primary" size="20px" class="q-mt-xs" />
             <div class="text-body2 text-dark">
               Al confirmar, la clave de acceso del usuario volverá a ser la contraseña temporal por
-              defecto (<strong class="text-primary">123456</strong>) y el sistema le exigirá cambiarla
+              defecto (<strong class="text-primary">{{ configuracionesStore.claveTemporalDefecto }}</strong>) y el sistema le exigirá cambiarla
               en su próximo inicio de sesión.
             </div>
           </div>
@@ -63,7 +63,10 @@
 </template>
 
 <script setup lang="ts">
+import { useConfiguracionesStore } from '@/stores/useConfiguracionesStore';
 import type { User } from '@/stores/useUsersStore';
+
+const configuracionesStore = useConfiguracionesStore();
 
 defineProps<{
   abierto: boolean;

@@ -3,7 +3,7 @@ export type RolUsuario =
   | 'MESA_TECNICA'
   | 'GERENTE_AREA'
   | 'TECNICO'
-  | 'GERENTE_GENERAL'
+  | 'DIRECTOR'
   | 'ADMINISTRADOR';
 
 export type TipoTrabajo =
@@ -33,9 +33,11 @@ export interface Ticket {
   folio: string;
   estado: EstadoTicket;
   descripcion_incidencia: string;
-  id_usuario_solicitante: number;
+  id_usuario_solicitante: number | null;
+  // 🛡️ [FASE 3.1 - SOLICITANTES] Relación normalizada hacia public.solicitantes
+  id_solicitante: number;
   solicitante: string;
-  solicitante_nick: string;
+  solicitante_nick: string | null;
   solicitante_telefono: string;
   id_departamento_solicitante: number;
   departamento_solicitante: string;
@@ -63,8 +65,24 @@ export interface Ticket {
   conformidad_usuario: boolean | null;
 }
 
+// 🛡️ [FASE 3.1 - SOLICITANTES] Catálogo normalizado de solicitantes de tickets
+export interface SolicitanteItem {
+  id: number;
+  nombre_completo: string;
+  telefono: string;
+  id_departamento: number;
+  departamento: string;
+  is_activo: boolean;
+  fecha_creacion: string;
+}
+
 export interface CreateTicketPayload {
-  id_usuario_solicitante: number;
+  id_solicitante?: number;
+  // 🛡️ [FASE 3.2 - SOLICITANTES] Confirmación explícita para actualizar datos del solicitante en su mismo departamento
+  actualizar_solicitante?: boolean;
+  id_departamento_solicitante?: number;
+  solicitante_nombre?: string;
+  solicitante_telefono?: string;
   id_catalogo: number;
   descripcion_incidencia: string;
 }
@@ -139,6 +157,12 @@ export interface TicketComentarioItem {
   rol_autor: string;
   mensaje: string;
   es_interno: boolean;
+  // 🛡️ [FASE 3.0 - COMENTARIOS] Trazabilidad de sistema y anulación lógica auditada
+  is_sistema: boolean;
+  is_anulado: boolean;
+  id_usuario_anula: number | null;
+  usuario_anula: string | null;
+  fecha_anulacion: string | null;
   fecha_creacion: string;
 }
 

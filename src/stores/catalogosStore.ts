@@ -81,9 +81,9 @@ const MOCK_USUARIOS_MAESTROS: readonly UsuarioMaestro[] = [
   },
   {
     id: 'gg-01',
-    username: 'gerente.general',
+    username: 'director',
     nombre: 'Carlos Mendoza',
-    rol: 'GERENTE_GENERAL',
+    rol: 'DIRECTOR',
     activo: true,
     fechaCreacion: '2026-10-01T08:30:00-04:00',
   },

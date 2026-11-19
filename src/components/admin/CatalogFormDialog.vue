@@ -30,7 +30,7 @@
           {{ error }}
         </q-banner>
 
-        <q-form @submit.prevent="alGuardar">
+        <q-form ref="formRef" @submit.prevent="alGuardar">
           <div class="row q-col-gutter-md">
             <div class="col-12">
               <q-input
@@ -53,10 +53,10 @@
                 v-model="idDepartamento"
                 :options="opcionesDepartamento"
                 option-value="id"
-                :option-label="(d: Department) => `${d.codigo} — ${d.nombre}`"
+                option-label="nombre"
                 emit-value
                 map-options
-                label="Departamento Destino"
+                label="Departamento Asignado"
                 outlined
                 dense
                 options-dense
@@ -106,10 +106,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { useQuasar } from 'quasar';
+import { computed, nextTick, ref, watch } from 'vue';
+import { useQuasar, type QForm } from 'quasar';
 import type { ServiceCatalog, ServiceCatalogPayload } from '@/stores/useCatalogStore';
-import type { Department } from '@/stores/useDepartmentsStore';
+import { esDepartamentoTI, type Department } from '@/stores/useDepartmentsStore';
 import type { PrioridadItem } from '@/stores/usePrioridadesStore';
 
 const $q = useQuasar();
@@ -130,11 +130,13 @@ const emit = defineEmits<{
 const nombre = ref('');
 const idDepartamento = ref<number | null>(null);
 const idPrioridad = ref<number | null>(null);
+const formRef = ref<QForm | null>(null);
 const activoToggle = ref(true);
 
+// 🛡️ [FASE 2 - REGLA OPERATIVA TI] Solo departamentos activos del área de TI (tipos 1 y 2) pueden atender servicios del catálogo
 const opcionesDepartamento = computed(() =>
   props.departamentos.filter(
-    (d) => d.is_activo || d.id === props.servicioEditar?.id_departamento,
+    (d) => (d.is_activo && esDepartamentoTI(d)) || d.id === props.servicioEditar?.id_departamento,
   ),
 );
 
@@ -153,10 +155,12 @@ watch(
       activoToggle.value = props.servicioEditar.is_activo;
     } else {
       nombre.value = '';
-      idDepartamento.value = opcionesDepartamento.value[0]?.id ?? null;
-      idPrioridad.value = opcionesPrioridad.value[0]?.id ?? null;
+      // 🛡️ Sin preselección al crear: obliga a elegir explícitamente departamento TI y prioridad
+      idDepartamento.value = null;
+      idPrioridad.value = null;
       activoToggle.value = true;
     }
+    void nextTick(() => formRef.value?.resetValidation());
   },
 );
 

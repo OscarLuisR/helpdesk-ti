@@ -30,8 +30,24 @@ const routes: RouteRecordRaw[] = [
     path: '/app',
     component: () => import('@/layouts/MainLayout.vue'),
     meta: { requiresAuth: true },
-    redirect: '/tecnico/mis-tickets',
+    redirect: '/dashboard',
     children: [
+      // 🛡️ [FASE 3 - DASHBOARD OPERATIVO] Vista principal adaptativa por rol
+      {
+        path: '/dashboard',
+        alias: ['/dashboard/ejecutivo', '/gerencia/metricas', '/tickets/carga-tecnica'],
+        component: () => import('@/pages/tickets/DashboardOperativoPage.vue'),
+        meta: {
+          requiresAuth: true,
+          roles: [
+            'ADMINISTRADOR',
+            'MESA_TECNICA',
+            'DIRECTOR',
+            'GERENTE_AREA',
+            'TECNICO',
+          ],
+        },
+      },
       // 🛡️ [FASE 2.3 - TICKETS] Rutas lazy-loaded protegidas por RBAC para bandejas y creación
       { path: '/bandeja', redirect: '/tickets/recepcion' },
       {
@@ -44,7 +60,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/tickets/BandejaTicketsPage.vue'),
         meta: {
           requiresAuth: true,
-          roles: ['ADMINISTRADOR', 'MESA_TECNICA', 'GERENTE_GENERAL'],
+          roles: ['ADMINISTRADOR', 'MESA_TECNICA', 'DIRECTOR'],
           modoBandeja: 'recepcion',
         },
       },
@@ -114,6 +130,11 @@ const routes: RouteRecordRaw[] = [
         path: '/admin/sla',
         alias: ['/admin/configuracion-slas'],
         component: () => import('@/pages/admin/ConfiguracionSlasPage.vue'),
+        meta: { requiresAuth: true, roles: ROLES_ADMINISTRATIVOS },
+      },
+      {
+        path: '/admin/configuraciones',
+        component: () => import('@/pages/admin/ConfiguracionesPage.vue'),
         meta: { requiresAuth: true, roles: ROLES_ADMINISTRATIVOS },
       },
     ],

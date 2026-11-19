@@ -48,7 +48,6 @@
                 <span class="chip" :class="props.row.estado === 'Activo' ? 'ok' : 'bad'">{{ props.row.estado }}</span>
               </div>
               <div class="row items-center q-gutter-x-xs q-mb-xs">
-                <span v-if="props.row.codigo_departamento" class="chip brand">{{ props.row.codigo_departamento }}</span>
                 <span class="chip" :class="claseChipPrioridad(props.row.prioridad)">{{ props.row.prioridad }}</span>
               </div>
               <div class="row items-center justify-between q-mt-sm">
@@ -67,10 +66,7 @@
         </template>
         <template #body-cell-departamento="props">
           <q-td :props="props">
-            <div class="row items-center no-wrap q-gutter-x-xs">
-              <span v-if="props.row.codigo_departamento" class="chip brand">{{ props.row.codigo_departamento }}</span>
-              <span class="text-caption text-weight-medium text-dark">{{ props.row.departamento }}</span>
-            </div>
+            <span class="text-caption text-weight-medium text-dark">{{ props.row.departamento }}</span>
           </q-td>
         </template>
         <template #body-cell-prioridad="props">

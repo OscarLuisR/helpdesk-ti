@@ -46,9 +46,9 @@ export const USUARIOS_MOCK: readonly UsuarioMock[] = [
   },
   {
     id: 'gg-01',
-    username: 'gerente.general',
+    username: 'director',
     nombre: 'Carlos Mendoza',
-    rol: 'GERENTE_GENERAL',
+    rol: 'DIRECTOR',
     passwordMock: 'demo1234',
   },
 ];

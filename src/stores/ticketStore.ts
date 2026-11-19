@@ -7,6 +7,7 @@ import type {
   EstadoTicket,
   PatchTicketEstadoPayload,
   PatchTicketEstadoResult,
+  SolicitanteItem,
   TecnicoDisponible,
   Ticket,
   TicketAdjuntoItem,
@@ -154,6 +155,26 @@ export const useTicketStore = defineStore('ticket', {
       }
     },
 
+    // 🛡️ [FASE 3.1 - SOLICITANTES] Búsqueda de solicitantes registrados en GET /api/tickets/solicitantes
+    async buscarSolicitantes(q?: string, idDepartamento?: number): Promise<SolicitanteItem[]> {
+      try {
+        const params: Record<string, string | number> = {};
+        if (q?.trim()) params.q = q.trim();
+        if (idDepartamento && idDepartamento > 0) params.id_departamento = idDepartamento;
+
+        const { data: respuesta } = await api.get<RespuestaApi<SolicitanteItem[]>>(
+          '/tickets/solicitantes',
+          { params },
+        );
+        return Array.isArray(respuesta.data) ? respuesta.data : [];
+      } catch (err: unknown) {
+        throw new Error(
+          extraerMensajeErrorApi(err, 'No fue posible consultar el directorio de solicitantes.'),
+          { cause: err },
+        );
+      }
+    },
+
     limpiarTickets(): void {
       this.tickets = [];
       this.tecnicosDisponibles = [];
@@ -185,6 +206,20 @@ export const useTicketStore = defineStore('ticket', {
         await api.post(`/tickets/${idTicket}/comentarios`, payload);
       } catch (err: unknown) {
         throw new Error(extraerMensajeErrorApi(err, 'No fue posible publicar el comentario.'), {
+          cause: err,
+        });
+      } finally {
+        this.guardando = false;
+      }
+    },
+
+    // 🛡️ [FASE 3.0 - COMENTARIOS] Anulación lógica (tachado) auditada de comentario manual
+    async anularComentario(idTicket: number, comentarioId: number): Promise<void> {
+      this.guardando = true;
+      try {
+        await api.patch(`/tickets/${idTicket}/comentarios/${comentarioId}/anular`);
+      } catch (err: unknown) {
+        throw new Error(extraerMensajeErrorApi(err, 'No fue posible anular el comentario.'), {
           cause: err,
         });
       } finally {

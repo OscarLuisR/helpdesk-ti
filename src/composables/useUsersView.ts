@@ -2,6 +2,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useQuasar, type QTableColumn, type QTableProps } from 'quasar';
 import { PATRON_NOMBRE_USUARIO } from '@/composables/useAuth';
 import { opcionesCambioEstado, useConfirmacion } from '@/composables/useConfirmacion';
+import { useConfiguracionesStore } from '@/stores/useConfiguracionesStore';
 import { useDepartmentsStore, type Department } from '@/stores/useDepartmentsStore';
 import { useRolesStore, type RolItem } from '@/stores/useRolesStore';
 import {
@@ -31,7 +32,7 @@ export interface OpcionFiltroRol {
 
 const ROL_CHIP_CLASS: Record<string, string> = {
   ADMINISTRADOR: 'bad',
-  GERENTE_GENERAL: 'brand',
+  DIRECTOR: 'brand',
   MESA_TECNICA: 'info',
   GERENTE_AREA: 'warn',
   TECNICO: 'neutral',
@@ -87,6 +88,7 @@ export function useUsersView() {
   const usersStore = useUsersStore();
   const rolesStore = useRolesStore();
   const departmentsStore = useDepartmentsStore();
+  const configuracionesStore = useConfiguracionesStore();
   const $q = useQuasar();
   const {
     confirmacionAbierta,
@@ -162,6 +164,7 @@ export function useUsersView() {
         usersStore.cargarUsuarios(),
         rolesStore.cargarRoles(),
         departmentsStore.cargarDepartamentos(),
+        configuracionesStore.cargarOperativas(),
       ]);
     } catch (err) {
       $q.notify({
@@ -221,7 +224,7 @@ export function useUsersView() {
         await usersStore.agregarUsuario(payload);
         $q.notify({
           type: 'positive',
-          message: 'Usuario creado correctamente (clave temporal inicial: 123456).',
+          message: `Usuario creado correctamente (clave temporal inicial: ${configuracionesStore.claveTemporalDefecto}).`,
           position: 'top-right',
         });
       }
@@ -278,7 +281,7 @@ export function useUsersView() {
       await usersStore.resetearPasswordUsuario(usuarioReset.value.id);
       $q.notify({
         type: 'positive',
-        message: `Contraseña de ${usuarioReset.value.nick} restablecida a 123456.`,
+        message: `Contraseña de ${usuarioReset.value.nick} restablecida a ${configuracionesStore.claveTemporalDefecto}.`,
         position: 'top-right',
       });
       modalResetAbierto.value = false;

@@ -69,6 +69,6 @@ export const OPCIONES_ROL_SIMULADOR: readonly OpcionRolSimulador[] = [
   { valor: 'MESA_TECNICA', etiqueta: 'Mesa Técnica' },
   { valor: 'GERENTE_AREA', etiqueta: 'Gerente de Área' },
   { valor: 'TECNICO', etiqueta: 'Técnico' },
-  { valor: 'GERENTE_GENERAL', etiqueta: 'Gerente General' },
+  { valor: 'DIRECTOR', etiqueta: 'Director' },
   { valor: 'ADMINISTRADOR', etiqueta: 'Administrador' },
 ];

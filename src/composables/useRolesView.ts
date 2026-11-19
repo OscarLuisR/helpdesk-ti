@@ -22,7 +22,7 @@ const CHIP_POR_CODIGO: Record<string, string> = {
   ADMINISTRADOR: 'brand',
   MESA_TECNICA: 'info',
   GERENTE_AREA: 'warn',
-  GERENTE_GENERAL: 'warn',
+  DIRECTOR: 'warn',
   TECNICO: 'ok',
   USUARIO: 'neutral',
 };

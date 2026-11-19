@@ -5,6 +5,13 @@ import { extraerMensajeErrorApi } from '@/stores/useRolesStore';
 
 export type EstadoDepartamento = 'Activo' | 'Inactivo';
 
+// 🛡️ [FASE 2 - REGLA OPERATIVA TI] Tipos de departamento pertenecientes al área de TI (1 = Gerencia TI, 2 = Sub-Gerencia TI)
+export const TIPOS_DEPARTAMENTO_TI_PERMITIDOS: ReadonlySet<number> = new Set([1, 2]);
+
+export function esDepartamentoTI(departamento: Pick<Department, 'id_tipo_departamento'>): boolean {
+  return TIPOS_DEPARTAMENTO_TI_PERMITIDOS.has(departamento.id_tipo_departamento);
+}
+
 export interface DepartamentoApi {
   id: number;
   codigo: string;
