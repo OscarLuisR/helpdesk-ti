@@ -2,8 +2,8 @@
   <q-card-section class="row items-center no-wrap q-pa-md toolbar">
     <div class="col">
       <div class="row items-baseline q-gutter-x-sm">
-        <span class="text-subtitle1 text-weight-bold text-dark">Tickets Activos</span>
-        <span class="text-caption muted">
+        <span class="text-subtitle1 text-weight-bold text-ink">Tickets Activos</span>
+        <span class="soft-badge soft-badge--neutral tabular-nums">
           {{ totalResultados }}
           {{ totalResultados === 1 ? 'ticket' : 'tickets' }}
         </span>
@@ -27,6 +27,7 @@
 
       <q-btn
         outline
+        unelevated
         no-caps
         dense
         color="secondary"
@@ -39,8 +40,8 @@
           v-if="estadosFiltro.length"
           floating
           rounded
-          color="accent"
-          text-color="dark"
+          color="primary"
+          text-color="white"
         >
           {{ estadosFiltro.length }}
         </q-badge>

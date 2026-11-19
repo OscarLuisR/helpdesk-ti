@@ -1,36 +1,39 @@
 <template>
-  <q-header class="app-header">
-    <q-toolbar class="q-px-lg header-toolbar">
+  <q-header class="modern-header app-header">
+    <q-toolbar class="q-px-md q-px-sm-lg header-toolbar">
       <q-btn
         flat
-        dense
+        unelevated
+        no-caps
         round
+        dense
         icon="menu"
-        color="secondary"
         aria-label="Abrir o cerrar menú"
-        class="q-mr-sm lt-md"
+        class="header-icon-btn q-mr-sm lt-md"
         @click="emit('alternarMenu')"
       />
 
-      <!-- Buscador superior estilo imagen -->
       <q-input
         v-model="textoBusqueda"
+        outlined
         dense
-        borderless
-        placeholder="Buscar..."
+        placeholder="Buscar tickets, áreas o usuarios..."
         class="header-search"
       >
         <template #prepend>
-          <q-icon name="search" size="18px" color="grey-5" class="q-ml-sm" />
+          <q-icon name="search" size="17px" class="search-icon" />
+        </template>
+        <template #append>
+          <span class="kbd-hint gt-sm">⌘K</span>
         </template>
       </q-input>
 
       <q-space />
 
-      <div class="row items-center no-wrap q-gutter-x-md">
+      <div class="row items-center no-wrap q-gutter-x-sm">
         <!-- TODO: Eliminar este selector simulador de rol antes de pasar a producción -->
         <div class="row items-center no-wrap role-simulator">
-          <span class="role-simulator__tag gt-sm">SIMULADOR ROL:</span>
+          <span class="role-simulator__tag gt-sm">ROL DEMO</span>
           <q-select
             :model-value="authStore.role"
             :options="OPCIONES_ROL_SIMULADOR"
@@ -47,42 +50,68 @@
           />
         </div>
 
-        <!-- Campana de notificaciones con indicador ámbar -->
         <q-btn
           flat
+          unelevated
+          no-caps
+          round
+          dense
+          :icon="$q.dark.isActive ? 'light_mode' : 'dark_mode'"
+          :aria-label="$q.dark.isActive ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
+          class="header-icon-btn"
+          @click="alternarTema"
+        >
+          <q-tooltip>{{ $q.dark.isActive ? 'Modo claro' : 'Modo oscuro' }}</q-tooltip>
+        </q-btn>
+
+        <q-btn
+          flat
+          unelevated
+          no-caps
           round
           dense
           icon="notifications_none"
-          color="blue-grey-8"
           aria-label="Notificaciones"
-          class="notif-btn"
+          class="header-icon-btn notif-btn"
         >
           <span class="notif-dot" />
         </q-btn>
 
-        <!-- Perfil de usuario estilo imagen -->
-        <q-btn flat no-caps dense class="profile-btn q-px-xs" :ripple="false">
+        <q-btn
+          flat
+          unelevated
+          no-caps
+          dense
+          class="profile-btn q-px-xs"
+          :ripple="false"
+        >
           <div class="row items-center no-wrap">
-            <q-avatar size="34px" class="profile-avatar q-mr-sm">
+            <q-avatar size="30px" class="profile-avatar q-mr-sm">
               {{ inicialesUsuario }}
             </q-avatar>
-            <span class="profile-name gt-xs">
-              {{ authStore.usuario?.nombre ?? 'Usuario TI' }}
-            </span>
-            <q-icon name="expand_more" size="18px" color="grey-7" class="q-ml-xs" />
+            <div class="column items-start gt-xs q-mr-xs">
+              <span class="profile-name">
+                {{ authStore.usuario?.nombre ?? 'Usuario TI' }}
+              </span>
+              <span class="profile-role">{{ etiquetaRolActual }}</span>
+            </div>
+            <q-icon name="expand_more" size="17px" class="profile-chevron" />
           </div>
 
           <q-menu anchor="bottom right" self="top right" class="profile-menu">
-            <q-list dense style="min-width: 190px" class="q-py-xs">
-              <q-item-label header class="text-caption text-grey-7">
-                Rol activo: <strong class="text-primary">{{ etiquetaRolActual }}</strong>
+            <q-list dense style="min-width: 210px" class="q-py-xs">
+              <q-item-label header class="text-caption muted q-py-xs">
+                Rol activo:
+                <strong class="profile-menu__role">{{ etiquetaRolActual }}</strong>
               </q-item-label>
               <q-separator class="q-my-xs" />
               <q-item clickable v-close-popup @click="emit('cerrarSesion')">
                 <q-item-section avatar>
                   <q-icon name="logout" size="18px" color="negative" />
                 </q-item-section>
-                <q-item-section class="text-negative">Cerrar sesión</q-item-section>
+                <q-item-section class="text-negative text-weight-medium">
+                  Cerrar sesión
+                </q-item-section>
               </q-item>
             </q-list>
           </q-menu>
@@ -94,6 +123,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useQuasar } from 'quasar';
 import { useNavigation } from '@/composables/useNavigation';
 import { OPCIONES_ROL_SIMULADOR } from '@/models/auth';
 
@@ -102,36 +132,160 @@ const emit = defineEmits<{
   cerrarSesion: [];
 }>();
 
+const $q = useQuasar();
 const { authStore, inicialesUsuario, etiquetaRolActual, cambiarRolSimulado } = useNavigation();
 const textoBusqueda = ref('');
+
+function alternarTema(): void {
+  $q.dark.toggle();
+  localStorage.setItem('helpdesk-theme', $q.dark.isActive ? 'dark' : 'light');
+}
 </script>
 
 <style scoped lang="scss">
-.app-header { background: #fff; color: #0f172a; border-bottom: 1px solid #e8eef3; }
-.header-toolbar { height: 68px; }
+.app-header {
+  box-shadow: none !important;
+}
+
+@media (min-width: 1024px) {
+  .app-header {
+    top: 10px !important;
+    right: 10px !important;
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
+    border: 1px solid var(--border-subtle);
+  }
+}
+
+.header-toolbar {
+  height: 58px;
+  min-height: 58px;
+}
+
 .header-search {
-  width: 310px; background: #f8fafc; border: 1px solid #e2e8f0;
-  border-radius: 10px; padding-right: 12px;
-  :deep(.q-field__control) { height: 38px; }
+  width: 270px;
+  max-width: 40vw;
+
+  :deep(.q-field__control) {
+    height: 34px;
+    min-height: 34px;
+    background: var(--surface-card);
+  }
+
+  :deep(.q-field__native) {
+    font-size: 0.82rem;
+    color: var(--text-primary);
+  }
 }
+
+.search-icon {
+  color: var(--text-muted);
+}
+
+.kbd-hint {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 2px 6px;
+  line-height: 1.2;
+}
+
 .role-simulator {
-  gap: 8px; background: #f0fdfa; border: 1px dashed #14b8a6;
-  border-radius: 10px; padding: 3px 8px;
-  &__tag { font-size: 0.7rem; font-weight: 700; color: #0f766e; letter-spacing: 0.04em; }
+  gap: 8px;
+  background: var(--brand-primary-soft);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 2px 8px;
+
+  &__tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--brand-ink);
+    letter-spacing: 0.06em;
+  }
 }
+
 .role-select {
-  min-width: 165px;
-  :deep(.q-field__control) { height: 32px; min-height: 32px; background: #fff; border-radius: 8px; }
-  :deep(.q-field__native) { font-size: 0.82rem; font-weight: 600; color: #0f172a; padding: 0; }
+  min-width: 154px;
+
+  :deep(.q-field__control) {
+    height: 28px;
+    min-height: 28px;
+    background: var(--surface-card);
+  }
+
+  :deep(.q-field__native) {
+    font-size: 0.79rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    padding: 0;
+  }
 }
-.notif-btn { position: relative; }
+
+.header-icon-btn {
+  color: var(--text-muted);
+  border: 1px solid transparent;
+
+  &:hover {
+    color: var(--text-primary);
+    background: var(--surface-card);
+    border-color: var(--border-subtle);
+  }
+}
+
+.notif-btn {
+  position: relative;
+}
+
 .notif-dot {
-  position: absolute; top: 6px; right: 6px; width: 8px; height: 8px;
-  border-radius: 50%; background: #f59e0b; border: 2px solid #fff;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: var(--brand-ink);
+  border: 1.5px solid var(--surface-card);
 }
+
+.profile-btn {
+  border-radius: 8px !important;
+  padding: 3px 6px;
+
+  &:hover {
+    background: var(--surface-card);
+  }
+}
+
 .profile-avatar {
-  background: linear-gradient(135deg, #1e3a5f, #0f766e);
-  color: #fff; font-size: 0.78rem; font-weight: 700;
+  background: var(--brand-primary);
+  color: var(--brand-on-primary);
+  border: 1px solid var(--brand-primary-border);
+  font-size: 0.72rem;
+  font-weight: 700;
 }
-.profile-name { font-size: 0.88rem; font-weight: 600; color: #1e293b; }
+
+.profile-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--text-primary);
+}
+
+.profile-role {
+  font-size: 0.68rem;
+  line-height: 1.15;
+  color: var(--text-muted);
+}
+
+.profile-chevron {
+  color: var(--text-muted);
+}
+
+.profile-menu__role {
+  color: var(--brand-ink);
+}
 </style>

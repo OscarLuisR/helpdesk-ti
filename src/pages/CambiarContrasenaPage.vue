@@ -262,29 +262,27 @@ async function alCancelar(): Promise<void> {
   display: grid;
   place-items: center;
   padding: 24px;
-  background-color: #f4f7f9;
-  background-image: radial-gradient(#dbe2ea 1px, transparent 1px);
-  background-size: 16px 16px;
+  background-color: var(--surface-bg);
+  background-image: radial-gradient(var(--border-subtle) 1px, transparent 1px);
+  background-size: 18px 18px;
 }
 .login-card {
   width: 100%;
-  max-width: 410px;
-  background: #fff;
-  border: 1px solid #e8eef3;
-  border-radius: 14px;
-  padding: 38px 36px;
-  box-shadow:
-    0 10px 30px rgba(15, 23, 42, 0.06),
-    0 1px 3px rgba(15, 23, 42, 0.03);
+  max-width: 416px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 36px 34px;
+  box-shadow: none;
   h1 {
-    font-size: 1.75rem;
+    font-size: 1.7rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text-primary);
     margin: 0 0 6px;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
   }
   .sub {
-    color: #64748b;
+    color: var(--text-muted);
     margin: 0 0 24px;
     font-size: 0.88rem;
     line-height: 1.45;
@@ -295,10 +293,10 @@ async function alCancelar(): Promise<void> {
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(15, 118, 110, 0.1);
-  border: 1px solid rgba(15, 118, 110, 0.22);
-  color: #0f766e;
+  border-radius: var(--radius-pill);
+  background: var(--brand-primary-soft);
+  border: 1px solid var(--border-strong);
+  color: var(--brand-ink);
   font-size: 0.76rem;
   font-weight: 600;
 }
@@ -307,39 +305,31 @@ async function alCancelar(): Promise<void> {
 }
 .field-label {
   display: block;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text-secondary);
   margin-bottom: 6px;
 }
 .clean-input :deep(.q-field__control) {
   height: 42px;
-  border-radius: 8px;
-  background: #fff;
-  &::before {
-    border-color: #cbd5e1;
-    transition: border-color 0.2s ease;
-  }
-}
-.clean-input :deep(.q-field--focused .q-field__control),
-.clean-input.q-field--focused :deep(.q-field__control) {
-  box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
 }
 .btn-signin {
   height: 42px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-weight: 600;
   font-size: 0.9rem;
 }
 .btn-cancel {
   height: 38px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-weight: 500;
   font-size: 0.84rem;
 }
 .login-error {
-  background: rgba(220, 38, 38, 0.08);
-  border: 1px solid rgba(220, 38, 38, 0.25);
+  background: var(--danger-soft);
+  border: 1px solid rgba(185, 28, 28, 0.25);
   color: var(--danger);
   font-size: 0.84rem;
 }

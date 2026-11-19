@@ -4,7 +4,7 @@
     :model-value="modelValue"
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
-    <q-card class="solicitante-dialog-card">
+    <q-card flat bordered class="solicitante-dialog-card">
       <q-card-section class="row items-center justify-between dialog-header q-pa-md">
         <div class="row items-center q-gutter-x-sm">
           <q-icon name="person_search" color="primary" size="22px" />
@@ -61,7 +61,7 @@
         <q-table
           flat
           bordered
-          class="tabla-solicitantes"
+          class="modern-table tabla-solicitantes"
           :rows="resultados"
           :columns="columnas"
           row-key="id"
@@ -275,20 +275,23 @@ watch(terminoBusqueda, () => {
 .solicitante-dialog-card {
   width: 100%;
   max-width: 680px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  overflow: hidden;
 }
 
 .tabla-solicitantes {
-  border-color: var(--border);
-  border-radius: 8px;
+  border-color: var(--border-subtle);
+  border-radius: var(--radius-sm);
 }
 
 .solicitante-row:hover {
-  background: var(--primary-soft);
+  background: var(--surface-hover);
 }
 
 .solicitante-card-mobile:hover {
-  border-color: var(--primary);
-  background: var(--primary-soft);
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
 }
 </style>

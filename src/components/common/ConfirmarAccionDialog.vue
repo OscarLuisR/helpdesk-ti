@@ -54,10 +54,5 @@ function alCambiarVisibilidad(visible: boolean): void {
 .dialog-card {
   width: 100vw;
   max-width: 440px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
 }
-.dialog-header { border-bottom: 1px solid var(--border); }
-.muted { color: var(--muted); }
 </style>

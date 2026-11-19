@@ -1,16 +1,18 @@
-// Slate Teal - variables de Quasar
-$primary:   #0f766e;
-$secondary: #1e3a5f;
-$accent:    #f59e0b;
+// Linear Inset Emerald - variables de Quasar
+// Modo Claro: #EBF0EC / #F6F8F6 / #065F46 | Modo Oscuro Mate: #0A0D0C / #111514 / #215B48 + #84BCA5
 
-$dark:      #0f1e33;
-$dark-page: #0a1424;
+$primary:   #065F46;
+$secondary: #0F766E;
+$accent:    #84BCA5;
 
-$positive:  #16a34a;
-$negative:  #dc2626;
-$info:      #0284c7;
-$warning:   #d97706;
+$dark:      #171C1A;
+$dark-page: #111514;
 
-$typography-font-family: 'Inter', sans-serif;
-$button-border-radius: 10px;
-$generic-border-radius: 10px;
+$positive:  #15803D;
+$negative:  #B91C1C;
+$info:      #0F766E;
+$warning:   #B45309;
+
+$typography-font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+$button-border-radius:   8px;
+$generic-border-radius:  12px;

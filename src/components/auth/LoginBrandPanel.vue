@@ -15,35 +15,34 @@
         xmlns="http://www.w3.org/2000/svg"
         aria-hidden="true"
       >
-        <!-- Sombra/acento teal en barras superior, media e inferior -->
-        <polygon points="30,16 64,16 58,22 24,22" fill="#14b8a6" fill-opacity="0.35" />
-        <polygon points="50,22 64,16 64,26 50,32" fill="#0d9488" fill-opacity="0.75" />
-        <polygon points="24,66 58,66 64,72 30,72" fill="#0d9488" fill-opacity="0.65" />
-        <!-- Hoja/acento curvo teal central -->
+        <polygon points="30,16 64,16 58,22 24,22" fill="#84BCA5" fill-opacity="0.32" />
+        <polygon points="50,22 64,16 64,26 50,32" fill="#215B48" fill-opacity="0.85" />
+        <polygon points="24,66 58,66 64,72 30,72" fill="#065F46" fill-opacity="0.7" />
         <path
           d="M36 44C42 36 54 36 60 42C54 50 42 50 36 44Z"
-          fill="url(#tealLeaf)"
+          fill="url(#sageLeaf)"
         />
-        <!-- Estructura isométrica blanca en E -->
         <path
           d="M24 22L32 14H66V24L58 32H36V40H54L60 44L54 50H36V58H58L66 66V74H32L24 66V22Z"
-          stroke="#f8fafc"
+          stroke="#EDF2EF"
           stroke-width="2.2"
           stroke-linejoin="round"
         />
         <path
           d="M32 14V66M24 22H58M24 66H58M24 44L36 40"
-          stroke="#cbd5e1"
+          stroke="#95A29C"
           stroke-width="1.5"
-          stroke-opacity="0.7"
+          stroke-opacity="0.6"
         />
         <defs>
-          <linearGradient id="tealLeaf" x1="36" y1="36" x2="60" y2="50" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#2dd4bf" />
-            <stop offset="1" stop-color="#0f766e" />
+          <linearGradient id="sageLeaf" x1="36" y1="36" x2="60" y2="50" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#98CBB5" />
+            <stop offset="1" stop-color="#065F46" />
           </linearGradient>
         </defs>
       </svg>
+
+      <span class="brand-pill">HelpDesk TI · Precision Operations</span>
 
       <h2>
         Impulsando el flujo de<br />
@@ -57,8 +56,8 @@
 .login-left {
   position: relative;
   overflow: hidden;
-  background: radial-gradient(circle at 75% 45%, #17375e 0%, #0c1f38 55%, #071324 100%);
-  color: #fff;
+  background: radial-gradient(circle at 75% 40%, #152821 0%, #0D1512 58%, #0A0D0C 100%);
+  color: #EDF2EF;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -73,15 +72,15 @@
   background-image:
     repeating-linear-gradient(
       45deg,
-      rgba(148, 163, 184, 0.08) 0,
-      rgba(148, 163, 184, 0.08) 1px,
+      rgba(132, 188, 165, 0.06) 0,
+      rgba(132, 188, 165, 0.06) 1px,
       transparent 1px,
       transparent 68px
     ),
     repeating-linear-gradient(
       -45deg,
-      rgba(148, 163, 184, 0.08) 0,
-      rgba(148, 163, 184, 0.08) 1px,
+      rgba(132, 188, 165, 0.06) 0,
+      rgba(132, 188, 165, 0.06) 1px,
       transparent 1px,
       transparent 68px
     );
@@ -93,8 +92,8 @@
   width: 67px;
   height: 67px;
   transform: rotate(45deg);
-  background: linear-gradient(135deg, rgba(20, 184, 166, 0.38), rgba(15, 118, 110, 0.05));
-  border: 1px solid rgba(45, 212, 191, 0.22);
+  background: linear-gradient(135deg, rgba(132, 188, 165, 0.16), rgba(6, 95, 70, 0.05));
+  border: 1px solid rgba(132, 188, 165, 0.16);
 
   &--1 { top: 11%; left: 16%; }
   &--2 { top: 26%; left: 5%; opacity: 0.7; }
@@ -110,20 +109,33 @@
   align-items: center;
 
   h2 {
-    font-size: 2rem;
-    font-weight: 500;
-    letter-spacing: -0.02em;
+    font-size: 1.95rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
     line-height: 1.28;
-    color: #f8fafc;
+    color: #EDF2EF;
     margin: 0;
   }
+}
+
+.brand-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(132, 188, 165, 0.12);
+  border: 1px solid rgba(132, 188, 165, 0.24);
+  color: #98CBB5;
+  margin-bottom: 16px;
 }
 
 .iso-logo {
   width: 82px;
   height: 82px;
-  margin-bottom: 22px;
-  filter: drop-shadow(0 8px 20px rgba(15, 118, 110, 0.25));
+  margin-bottom: 20px;
 }
 </style>
-

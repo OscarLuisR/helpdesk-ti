@@ -1,8 +1,12 @@
 <!-- 🛡️ [FASE 3 - CONFIGURACIONES GENERALES] Gestión de parámetros globales (solo Administrador y Mesa Técnica) -->
 <template>
-  <q-page class="q-pa-md q-pa-sm-lg">
-    <div class="row items-center justify-between q-gutter-y-sm q-mb-lg">
+  <q-page class="q-pa-md q-pa-sm-lg admin-page">
+    <div class="row items-end justify-between q-gutter-y-sm q-mb-lg">
       <div class="col-12 col-sm-auto">
+        <span class="page-eyebrow">
+          <q-icon name="tune" size="14px" />
+          Administración · Sistema
+        </span>
         <h1 class="page-title">Configuraciones Generales</h1>
         <p class="page-subtitle">
           Parámetros operativos del sistema y políticas de almacenamiento aplicables a los tickets.
@@ -11,6 +15,7 @@
       <div class="col-12 col-sm-auto">
         <q-btn
           outline
+          unelevated
           no-caps
           color="secondary"
           icon="refresh"
@@ -21,19 +26,21 @@
       </div>
     </div>
 
-    <q-card flat bordered class="card">
-      <div class="row items-center q-col-gutter-sm q-mb-md">
-        <div class="col-12 col-sm-6 col-md-5">
-          <q-input
-            v-model="busqueda"
-            debounce="250"
-            dense
-            outlined
-            clearable
-            placeholder="Buscar parámetro por nombre, clave o descripción..."
-          >
-            <template #prepend><q-icon name="search" color="grey-6" /></template>
-          </q-input>
+    <q-card flat bordered class="modern-card overflow-hidden">
+      <div class="toolbar-section q-pa-md">
+        <div class="row items-center q-col-gutter-sm">
+          <div class="col-12 col-sm-6 col-md-5">
+            <q-input
+              v-model="busqueda"
+              debounce="250"
+              dense
+              outlined
+              clearable
+              placeholder="Buscar parámetro por nombre, clave o descripción..."
+            >
+              <template #prepend><q-icon name="search" class="muted" /></template>
+            </q-input>
+          </div>
         </div>
       </div>
 
@@ -46,16 +53,16 @@
         :grid="$q.screen.lt.md"
         hide-pagination
         no-data-label="No se encontraron parámetros de configuración"
-        class="tabla-pro-q"
+        class="modern-table"
       >
         <template #item="props">
           <div class="col-12 col-sm-6 q-pa-xs">
-            <q-card flat bordered class="q-pa-sm">
+            <q-card flat bordered class="modern-card q-pa-md full-height">
               <div class="row items-start justify-between no-wrap q-mb-xs">
                 <span class="chip brand">{{ props.row.clave }}</span>
-                <span class="chip info">{{ props.row.valor }}</span>
+                <span class="chip info tabular-nums">{{ props.row.valor }}</span>
               </div>
-              <div class="text-weight-bold text-dark q-mb-xs">{{ props.row.nombre }}</div>
+              <div class="text-weight-bold text-ink q-mb-xs">{{ props.row.nombre }}</div>
               <div class="text-caption muted q-mb-sm">{{ props.row.descripcion }}</div>
               <div class="row items-center justify-between">
                 <span class="text-caption muted">
@@ -63,6 +70,7 @@
                 </span>
                 <q-btn
                   flat
+                  unelevated
                   dense
                   no-caps
                   color="primary"
@@ -79,7 +87,7 @@
           <q-td :props="props">
             <div class="column">
               <div class="row items-center q-gutter-x-sm">
-                <span class="text-weight-bold text-dark">{{ props.row.nombre }}</span>
+                <span class="text-weight-bold text-ink">{{ props.row.nombre }}</span>
                 <span class="chip brand">{{ props.row.clave }}</span>
               </div>
               <span class="text-caption muted q-mt-xs">{{ props.row.descripcion }}</span>
@@ -89,7 +97,7 @@
 
         <template #body-cell-valor="props">
           <q-td :props="props">
-            <span class="chip info text-weight-bold">{{ props.row.valor }}</span>
+            <span class="chip info text-weight-bold tabular-nums">{{ props.row.valor }}</span>
             <div class="text-caption muted q-mt-xs">{{ rangoTexto(props.row) }}</div>
           </q-td>
         </template>
@@ -97,7 +105,7 @@
         <template #body-cell-actualizacion="props">
           <q-td :props="props">
             <div class="column">
-              <span class="text-caption text-dark">{{ formatearFecha(props.row.fecha_actualizacion) }}</span>
+              <span class="text-caption text-ink tabular-nums">{{ formatearFecha(props.row.fecha_actualizacion) }}</span>
               <span class="text-caption muted">
                 {{ props.row.usuario_actualizacion ?? 'Configuración inicial' }}
               </span>
@@ -109,11 +117,13 @@
           <q-td :props="props" auto-width>
             <q-btn
               flat
+              unelevated
+              no-caps
               round
               dense
               icon="edit"
               size="sm"
-              color="primary"
+              class="row-action-btn"
               @click="abrirModalEditar(props.row)"
             >
               <q-tooltip>Editar valor</q-tooltip>
@@ -322,17 +332,15 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+.admin-page {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.toolbar-section {
+  border-bottom: 1px solid var(--border-subtle);
+}
 .dialog-card {
   width: 100vw;
   max-width: 520px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-}
-.dialog-header {
-  border-bottom: 1px solid var(--border);
-}
-.muted {
-  color: var(--muted);
 }
 </style>

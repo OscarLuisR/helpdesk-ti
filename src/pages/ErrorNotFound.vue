@@ -20,6 +20,6 @@
 
 <style scoped lang="scss">
 .not-found {
-  background: linear-gradient(135deg, #0f1e33 0%, #1e3a5f 100%);
+  background: radial-gradient(circle at 75% 40%, #152821 0%, #0d1512 58%, #0a0d0c 100%);
 }
 </style>

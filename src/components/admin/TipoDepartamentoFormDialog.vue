@@ -146,20 +146,5 @@ function alGuardar(): void {
 .dialog-card {
   width: 100vw;
   max-width: 520px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-}
-.dialog-header {
-  border-bottom: 1px solid var(--border);
-}
-.muted {
-  color: var(--muted);
-}
-.form-error {
-  background: rgba(220, 38, 38, 0.08);
-  border: 1px solid rgba(220, 38, 38, 0.25);
-  color: var(--danger);
-  font-size: 0.84rem;
 }
 </style>

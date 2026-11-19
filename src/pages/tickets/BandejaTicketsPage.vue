@@ -1,8 +1,12 @@
 <!-- 🛡️ [FASE 2.3 - TICKETS] Bandeja unificada con filtros por defecto según el rol en sesión -->
 <template>
   <q-page class="q-pa-md q-pa-sm-lg">
-    <div class="row items-center justify-between q-gutter-y-sm q-mb-lg">
+    <div class="row items-end justify-between q-gutter-y-sm q-mb-lg">
       <div class="col-12 col-sm-auto">
+        <span class="page-eyebrow">
+          <q-icon name="inbox" size="14px" />
+          Operación · Tickets
+        </span>
         <h1 class="page-title">{{ tituloBandeja }}</h1>
         <p class="page-subtitle">{{ subtituloBandeja }}</p>
       </div>
@@ -10,6 +14,7 @@
       <div class="col-12 col-sm-auto row items-center q-gutter-sm">
         <q-btn
           outline
+          unelevated
           no-caps
           color="secondary"
           icon="refresh"
@@ -33,7 +38,7 @@
       {{ errorCarga }}
     </div>
 
-    <q-card flat bordered class="tabla-card">
+    <q-card flat bordered class="modern-card overflow-hidden">
       <TicketsToolbar
         v-model:busqueda="busqueda"
         v-model:estados-filtro="estadosFiltro"
@@ -44,7 +49,7 @@
 
       <q-table
         flat
-        class="tabla-pro-q"
+        class="modern-table"
         :rows="ticketsFiltrados"
         :columns="columns"
         row-key="id"
@@ -56,15 +61,15 @@
       >
         <template #item="props">
           <div class="col-12 col-sm-6 q-pa-xs">
-            <q-card flat bordered class="q-pa-sm">
+            <q-card flat bordered class="modern-card q-pa-md full-height">
               <div class="row items-center justify-between no-wrap q-mb-xs">
-                <span class="text-weight-bold text-primary">{{ props.row.folio }}</span>
+                <span class="text-weight-bold text-primary tabular-nums">{{ props.row.folio }}</span>
                 <span class="chip" :class="ESTADO_CLASS[props.row.estado as EstadoTicket]">
                   <span class="chip__dot" />
                   {{ props.row.estado }}
                 </span>
               </div>
-              <div class="text-weight-medium text-dark q-mb-xs">
+              <div class="text-weight-medium text-ink q-mb-xs">
                 {{ props.row.catalogo_incidencia }}
               </div>
               <div class="text-caption muted q-mb-sm">
@@ -77,6 +82,7 @@
                 </span>
                 <q-btn
                   flat
+                  unelevated
                   dense
                   no-caps
                   color="primary"
@@ -91,7 +97,7 @@
 
         <template #body-cell-folio="props">
           <q-td :props="props">
-            <span class="text-weight-bold text-primary">{{ props.row.folio }}</span>
+            <span class="text-weight-bold text-primary tabular-nums">{{ props.row.folio }}</span>
           </q-td>
         </template>
 
@@ -99,14 +105,14 @@
           <q-td :props="props">
             <div class="row items-center no-wrap">
               <q-avatar
-                size="32px"
+                size="30px"
                 class="q-mr-sm avatar-iniciales"
                 :style="avatarSolicitanteStyle(props.row.solicitante)"
               >
                 {{ inicialesSolicitante(props.row.solicitante) }}
               </q-avatar>
               <div class="column">
-                <span class="text-weight-bold text-dark">{{ props.row.solicitante }}</span>
+                <span class="text-weight-bold text-ink">{{ props.row.solicitante }}</span>
                 <span class="text-caption muted">{{ props.row.departamento_solicitante }}</span>
               </div>
             </div>
@@ -116,7 +122,7 @@
         <template #body-cell-catalogo="props">
           <q-td :props="props">
             <div class="column">
-              <span class="text-weight-medium text-dark">{{ props.row.catalogo_incidencia }}</span>
+              <span class="text-weight-medium text-ink">{{ props.row.catalogo_incidencia }}</span>
               <span class="text-caption muted">{{ props.row.departamento }}</span>
             </div>
           </q-td>
@@ -142,7 +148,7 @@
 
         <template #body-cell-tecnico="props">
           <q-td :props="props">
-            <span :class="props.row.tecnico ? 'text-dark' : 'muted'">
+            <span :class="props.row.tecnico ? 'text-ink' : 'muted'">
               {{ props.row.tecnico ?? 'Sin asignar' }}
             </span>
           </q-td>
@@ -152,6 +158,7 @@
           <q-td :props="props" auto-width>
             <q-btn
               flat
+              unelevated
               dense
               no-caps
               color="primary"

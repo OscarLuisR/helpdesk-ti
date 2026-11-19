@@ -250,6 +250,13 @@
                 maxlength="2000"
                 label="Solución aplicada *"
               />
+              <q-checkbox
+                v-if="rol === 'MESA_TECNICA'"
+                v-model="form.cerrar_inmediato"
+                dense
+                color="primary"
+                label="Usuario confirmó conformidad en llamada (cerrar ticket inmediatamente)"
+              />
             </template>
 
             <q-checkbox
@@ -281,7 +288,11 @@
                 no-caps
                 color="primary"
                 :loading="ticketStore.guardando"
-                label="Confirmar transición"
+                :label="
+                  accionActiva === 'Resuelto - Por Verificar' && form.cerrar_inmediato
+                    ? 'Resolver y Cerrar'
+                    : 'Confirmar transición'
+                "
                 @click="ejecutarTransicion"
               />
             </div>
@@ -399,6 +410,7 @@ const form = reactive({
   solucion_aplicada: '',
   comentario: '',
   conformidad_usuario: true,
+  cerrar_inmediato: false,
 });
 
 const rol = computed(() => authStore.role);
@@ -482,6 +494,7 @@ function resetearFormulario(): void {
   form.solucion_aplicada = '';
   form.comentario = '';
   form.conformidad_usuario = true;
+  form.cerrar_inmediato = false;
 }
 
 async function cargarDatosDetalle(): Promise<void> {
@@ -578,6 +591,39 @@ async function ejecutarTransicion(): Promise<void> {
 
   try {
     const res = await ticketStore.cambiarEstadoTicket(props.ticket.id, payload);
+
+    if (
+      accionActiva.value === 'Resuelto - Por Verificar' &&
+      rol.value === 'MESA_TECNICA' &&
+      form.cerrar_inmediato
+    ) {
+      try {
+        const payloadCierre: PatchTicketEstadoPayload = {
+          estado_nuevo: 'Cerrado',
+          conformidad_usuario: true,
+          ...(form.comentario.trim() ? { comentario: form.comentario.trim() } : {}),
+        };
+        const resCierre = await ticketStore.cambiarEstadoTicket(props.ticket.id, payloadCierre);
+        $q.notify({
+          type: 'positive',
+          message: `Ticket ${resCierre.folio} resuelto y cerrado con conformidad del usuario.`,
+          position: 'top-right',
+        });
+      } catch (errCierre: unknown) {
+        const msgCierre =
+          errCierre instanceof Error ? errCierre.message : 'No se pudo completar el cierre.';
+        $q.notify({
+          type: 'warning',
+          message: `Ticket ${res.folio} quedó en "${res.estado_nuevo}", pero falló el cierre inmediato: ${msgCierre}`,
+          position: 'top-right',
+          timeout: 4500,
+        });
+      }
+      emit('actualizado');
+      emit('update:modelValue', false);
+      return;
+    }
+
     $q.notify({
       type: 'positive',
       message: `Ticket ${res.folio} actualizado a "${res.estado_nuevo}".`,
@@ -607,9 +653,12 @@ function formatearFecha(fecha: string): string {
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  box-shadow: 0 22px 52px rgba(10, 13, 12, 0.22) !important;
+  overflow: hidden;
 }
 
 .detalle-body {
@@ -617,19 +666,19 @@ function formatearFecha(fecha: string): string {
 }
 
 .tabs-barra {
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .info-box {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
 }
 
 .acciones-panel {
-  background: var(--primary-soft);
-  border: 1px solid rgba(15, 118, 110, 0.25);
-  border-radius: 8px;
+  background: var(--brand-primary-soft);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
 }
 
 .whitespace-preline {

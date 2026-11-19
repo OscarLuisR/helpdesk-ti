@@ -1,8 +1,12 @@
 <!-- 🛡️ [FASE 2.3 - TICKETS] Formulario de creación de tickets con auto-cálculo dinámico de prioridad y área TI -->
 <template>
   <q-page class="q-pa-md q-pa-sm-lg">
-    <div class="row items-center justify-between q-gutter-y-sm q-mb-lg">
+    <div class="row items-end justify-between q-gutter-y-sm q-mb-lg">
       <div class="col-12 col-sm-auto">
+        <span class="page-eyebrow">
+          <q-icon name="add_box" size="14px" />
+          Operación · Registro
+        </span>
         <h1 class="page-title">Registrar Nuevo Ticket</h1>
         <p class="page-subtitle">
           Selecciona el departamento solicitante, registra los datos de contacto y elige la incidencia del catálogo para calcular automáticamente su prioridad SLA y área responsable.
@@ -11,6 +15,7 @@
       <div class="col-12 col-sm-auto">
         <q-btn
           outline
+          unelevated
           no-caps
           color="secondary"
           icon="inbox"
@@ -1043,35 +1048,40 @@ onMounted(async () => {
 .confirmar-solicitante-card {
   width: 100%;
   max-width: 480px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  overflow: hidden;
 }
 
 .sla-row {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
 }
 
 .folio-creado {
-  background: rgba(22, 163, 74, 0.08);
-  border: 1px solid rgba(22, 163, 74, 0.25);
-  border-radius: 8px;
+  background: var(--success-soft);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
 }
 
 .form-warning {
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: var(--warning-soft);
+  border: 1px solid var(--border-subtle);
 }
 
 .dropzone-evidencia {
-  background: var(--bg);
-  border: 1.5px dashed var(--border);
-  border-radius: 10px;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  background: var(--surface-bg);
+  border: 1.5px dashed var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition:
+    border-color var(--transition-ui),
+    background-color var(--transition-ui);
 
   &--activa {
-    border-color: var(--primary);
-    background: rgba(15, 118, 110, 0.06);
+    border-color: var(--brand-ink);
+    background: var(--brand-primary-soft);
   }
 
   &--llena {
@@ -1081,9 +1091,9 @@ onMounted(async () => {
 
 .preview-card-item {
   position: relative;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
   overflow: hidden;
 }
 
@@ -1092,7 +1102,7 @@ onMounted(async () => {
   width: 100%;
   height: 112px;
   object-fit: cover;
-  background: #f1f5f9;
+  background: var(--surface-subtle);
 }
 
 .preview-remove-btn {

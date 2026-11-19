@@ -2,28 +2,33 @@
   <q-drawer
     :model-value="abierto"
     show-if-above
-    :width="256"
+    :width="244"
     class="app-sidebar"
     @update:model-value="(val) => emit('update:abierto', val)"
   >
-    <div class="column full-height no-wrap">
-      <div class="sidebar-brand row items-center no-wrap q-px-lg">
+    <div class="column full-height no-wrap q-pa-sm">
+      <!-- Marca superior encastrada -->
+      <div class="sidebar-brand row items-center no-wrap q-px-sm q-py-sm">
         <div class="brand-logo" aria-hidden="true">
-          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M8 7L16 3L24 7V15L16 11L8 15V7Z" fill="#2dd4bf" />
-            <path d="M8 15L16 19V29L8 25V15Z" fill="#0d9488" />
-            <path d="M24 19L16 23V29L24 25V19Z" fill="#14b8a6" fill-opacity="0.75" />
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2 2 7l10 5 10-5-10-5Z" />
+            <path d="m2 17 10 5 10-5" />
+            <path d="m2 12 10 5 10-5" />
           </svg>
         </div>
-        <span class="brand-title">HelpDesk TI</span>
+        <div class="column">
+          <span class="brand-title">HelpDesk TI</span>
+          <span class="brand-caption">Ops Workspace</span>
+        </div>
       </div>
 
-      <q-list class="sidebar-nav col q-px-md q-pt-md">
+      <!-- Navegación -->
+      <q-list class="sidebar-nav col q-pt-sm q-px-xs">
         <template v-for="item in itemsMenu" :key="item.id">
           <q-item-label
             v-if="item.seccion && authStore.role === 'MESA_TECNICA'"
             header
-            class="nav-section-label q-px-sm q-pt-sm q-pb-xs"
+            class="nav-section-label q-px-sm q-pt-md q-pb-xs"
           >
             {{ item.seccion }}
           </q-item-label>
@@ -37,7 +42,7 @@
             @click="alHacerClicItem(item)"
           >
             <q-item-section avatar class="nav-item__icon">
-              <q-icon :name="item.icono" size="20px" />
+              <q-icon :name="item.icono" size="18px" />
             </q-item-section>
             <q-item-section class="nav-item__label">
               {{ item.titulo }}
@@ -46,13 +51,36 @@
         </template>
       </q-list>
 
-      <div class="sidebar-footer q-px-md q-pb-md">
-        <q-item clickable :ripple="false" class="nav-item" @click="alCerrarSesion">
-          <q-item-section avatar class="nav-item__icon">
-            <q-icon name="logout" size="20px" />
-          </q-item-section>
-          <q-item-section class="nav-item__label">Cerrar sesión</q-item-section>
-        </q-item>
+      <!-- Tarjeta inferior de usuario + salida rápida -->
+      <div class="sidebar-footer q-pt-sm q-px-xs">
+        <div class="user-pill-card row items-center justify-between no-wrap q-pa-sm">
+          <div class="row items-center no-wrap min-w-0">
+            <q-avatar size="30px" class="user-pill-avatar q-mr-sm">
+              {{ inicialesUsuario }}
+            </q-avatar>
+            <div class="column min-w-0">
+              <span class="user-pill-name ellipsis">
+                {{ authStore.usuario?.nombre ?? 'Usuario TI' }}
+              </span>
+              <span class="user-pill-role ellipsis">{{ etiquetaRolActual }}</span>
+            </div>
+          </div>
+
+          <q-btn
+            flat
+            unelevated
+            no-caps
+            round
+            dense
+            icon="logout"
+            size="sm"
+            aria-label="Cerrar sesión"
+            class="logout-icon-btn"
+            @click="alCerrarSesion"
+          >
+            <q-tooltip>Cerrar sesión</q-tooltip>
+          </q-btn>
+        </div>
       </div>
     </div>
   </q-drawer>
@@ -72,7 +100,14 @@ const emit = defineEmits<{
 }>();
 
 const $q = useQuasar();
-const { authStore, itemsMenu, esRutaActiva, irARuta } = useNavigation();
+const {
+  authStore,
+  itemsMenu,
+  inicialesUsuario,
+  etiquetaRolActual,
+  esRutaActiva,
+  irARuta,
+} = useNavigation();
 
 function alHacerClicItem(item: MenuItem): void {
   void irARuta(item);
@@ -92,30 +127,151 @@ function alCerrarSesion(): void {
 <style scoped lang="scss">
 :deep(.q-drawer),
 .app-sidebar {
-  background: #0b192c !important;
-  color: #94a3b8;
+  background: var(--shell-outer-bg) !important;
+  color: var(--sidebar-text);
   border-right: none !important;
 }
-.sidebar-brand { height: 72px; gap: 12px; }
-.brand-logo { width: 30px; height: 30px; display: grid; place-items: center; }
-.brand-title { color: #fff; font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; }
-.sidebar-nav { overflow-y: auto; }
+
+.sidebar-brand {
+  min-height: 52px;
+  gap: 10px;
+}
+
+.brand-logo {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--brand-primary);
+  border: 1px solid var(--brand-primary-border);
+  color: var(--brand-on-primary);
+  flex-shrink: 0;
+}
+
+.brand-title {
+  color: var(--text-primary);
+  font-size: 0.94rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.brand-caption {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.sidebar-nav {
+  overflow-y: auto;
+}
+
 .nav-section-label {
-  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em;
-  text-transform: uppercase; color: #64748b;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.8;
 }
+
 .nav-item {
-  border-radius: 10px; color: #94a3b8; min-height: 44px; padding: 0 14px; margin-bottom: 6px;
-  transition: background-color 0.18s ease, color 0.18s ease;
-  &:hover:not(.nav-item--active) { background: rgba(255, 255, 255, 0.05); color: #e2e8f0; }
-  &__icon { min-width: 34px; padding-right: 10px; color: inherit; }
-  &__label { font-size: 0.9rem; font-weight: 500; }
+  position: relative;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  color: var(--sidebar-text);
+  min-height: 38px;
+  padding: 0 10px;
+  margin-bottom: 3px;
+  transition:
+    background-color var(--transition-ui),
+    border-color var(--transition-ui),
+    color var(--transition-ui);
+
+  &:hover:not(.nav-item--active) {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+  }
+
+  &__icon {
+    min-width: 28px;
+    padding-right: 8px;
+    color: inherit;
+  }
+
+  &__label {
+    font-size: 0.84rem;
+    font-weight: 500;
+  }
 }
+
 .nav-item--active {
-  background: linear-gradient(90deg, #0d9488 0%, #0f766e 100%) !important;
-  color: #fff !important;
-  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.32);
-  .nav-item__label { font-weight: 600; }
+  background: var(--surface-card) !important;
+  border-color: var(--border-subtle);
+  color: var(--sidebar-text-active) !important;
+  box-shadow: none !important;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 7px;
+    bottom: 7px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--brand-ink);
+  }
+
+  .nav-item__icon {
+    color: var(--brand-ink);
+  }
+
+  .nav-item__label {
+    font-weight: 600;
+  }
 }
-.sidebar-footer { border-top: 1px solid rgba(148, 163, 184, 0.1); padding-top: 12px; }
+
+.sidebar-footer {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.user-pill-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  gap: 8px;
+}
+
+.user-pill-avatar {
+  background: var(--brand-primary);
+  border: 1px solid var(--brand-primary-border);
+  color: var(--brand-on-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.user-pill-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.user-pill-role {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.logout-icon-btn {
+  color: var(--text-muted);
+  flex-shrink: 0;
+
+  &:hover {
+    color: var(--danger);
+    background: var(--danger-soft);
+  }
+}
 </style>

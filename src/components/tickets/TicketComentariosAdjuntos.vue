@@ -529,8 +529,8 @@ onUnmounted(() => {
 }
 
 .nota-interna {
-  background: rgba(245, 158, 11, 0.08);
-  border-color: rgba(217, 119, 6, 0.35);
+  background: var(--warning-soft);
+  border-color: var(--border-strong);
 }
 
 .nota-anulada {
