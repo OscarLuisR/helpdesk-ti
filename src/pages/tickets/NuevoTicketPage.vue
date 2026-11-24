@@ -1,18 +1,18 @@
 <!-- 🛡️ [FASE 2.3 - TICKETS] Formulario de creación de tickets con auto-cálculo dinámico de prioridad y área TI -->
 <template>
-  <q-page class="q-pa-md q-pa-sm-lg">
+  <q-page class="q-pa-md q-pa-sm-lg nuevo-ticket-page">
     <div class="row items-end justify-between q-gutter-y-sm q-mb-lg">
-      <div class="col-12 col-sm-auto">
+      <div class="col-12 col-sm min-w-0">
         <span class="page-eyebrow">
           <q-icon name="add_box" size="14px" />
           Operación · Registro
         </span>
         <h1 class="page-title">Registrar Nuevo Ticket</h1>
         <p class="page-subtitle">
-          Selecciona el departamento solicitante, registra los datos de contacto y elige la incidencia del catálogo para calcular automáticamente su prioridad SLA y área responsable.
+          Registro de incidencias con cálculo automático de prioridad SLA y área TI.
         </p>
       </div>
-      <div class="col-12 col-sm-auto">
+      <div class="col-12 col-sm-auto row items-center q-gutter-sm shrink-0">
         <q-btn
           outline
           unelevated
@@ -20,6 +20,7 @@
           color="secondary"
           icon="inbox"
           label="Ir a Recepción"
+          :class="{ 'col-grow': $q.screen.xs }"
           to="/tickets/recepcion"
         />
       </div>
@@ -1238,5 +1239,18 @@ onMounted(async () => {
   top: 6px;
   right: 6px;
   opacity: 0.9;
+}
+
+.nuevo-ticket-page {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+.shrink-0 {
+  flex-shrink: 0;
 }
 </style>

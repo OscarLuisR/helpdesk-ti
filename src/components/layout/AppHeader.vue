@@ -13,21 +13,6 @@
         @click="emit('alternarMenu')"
       />
 
-      <q-input
-        v-model="textoBusqueda"
-        outlined
-        dense
-        placeholder="Buscar tickets, áreas o usuarios..."
-        class="header-search"
-      >
-        <template #prepend>
-          <q-icon name="search" size="17px" class="search-icon" />
-        </template>
-        <template #append>
-          <span class="kbd-hint gt-sm">⌘K</span>
-        </template>
-      </q-input>
-
       <q-space />
 
       <div class="row items-center no-wrap q-gutter-x-sm">
@@ -103,7 +88,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { useNavigation } from '@/composables/useNavigation';
 
@@ -114,7 +98,6 @@ const emit = defineEmits<{
 
 const $q = useQuasar();
 const { authStore, inicialesUsuario, etiquetaRolActual } = useNavigation();
-const textoBusqueda = ref('');
 
 function alternarTema(): void {
   $q.dark.toggle();
@@ -140,37 +123,6 @@ function alternarTema(): void {
 .header-toolbar {
   height: 58px;
   min-height: 58px;
-}
-
-.header-search {
-  width: 270px;
-  max-width: 40vw;
-
-  :deep(.q-field__control) {
-    height: 34px;
-    min-height: 34px;
-    background: var(--surface-card);
-  }
-
-  :deep(.q-field__native) {
-    font-size: 0.82rem;
-    color: var(--text-primary);
-  }
-}
-
-.search-icon {
-  color: var(--text-muted);
-}
-
-.kbd-hint {
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: var(--surface-subtle);
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-  padding: 2px 6px;
-  line-height: 1.2;
 }
 
 .header-icon-btn {

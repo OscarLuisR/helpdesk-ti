@@ -1,59 +1,57 @@
 <!-- 🛡️ [FASE 3.6 - DASHBOARD OPERATIVO] Relojes reales desde ticket_bitacora, filtros de período, comparativa de pares y UI responsiva -->
 <template>
   <q-page class="q-pa-md q-pa-sm-lg dashboard-page">
-    <!-- Cabecera de página -->
-    <div class="top-bar q-pb-md q-mb-md">
-      <div class="row items-end justify-between q-gutter-y-sm">
-        <div class="col-12 col-sm-auto">
-          <span class="page-eyebrow">
-            <q-icon name="space_dashboard" size="14px" />
-            Operación · Monitoreo
+    <!-- Cabecera de página alineada con Recepción Global y Verificación -->
+    <div class="row items-end justify-between q-gutter-y-sm q-mb-lg">
+      <div class="col-12 col-lg min-w-0">
+        <span class="page-eyebrow">
+          <q-icon name="space_dashboard" size="14px" />
+          Operación · Monitoreo
+        </span>
+        <div class="dashboard-title-row">
+          <h1 class="page-title">{{ tituloDashboard }}</h1>
+          <span
+            class="calidad-badge"
+            :class="tasaReaperturaPct < metaMaxReaperturaPct ? 'calidad-badge--ok' : 'calidad-badge--bad'"
+          >
+            {{ textoCalidadBadge }}
           </span>
-          <div class="row items-center q-gutter-sm">
-            <h1 class="page-title">{{ tituloDashboard }}</h1>
-            <span
-              class="calidad-badge"
-              :class="tasaReaperturaPct < metaMaxReaperturaPct ? 'calidad-badge--ok' : 'calidad-badge--bad'"
-            >
-              {{ textoCalidadBadge }}
-            </span>
-          </div>
-          <p class="page-subtitle">{{ hintRolActual }}</p>
         </div>
+        <p class="page-subtitle">{{ hintRolActual }}</p>
+      </div>
 
-        <div class="col-12 col-sm-auto row items-center q-gutter-sm">
-          <q-btn
-            outline
-            unelevated
-            no-caps
-            color="secondary"
-            icon="refresh"
-            label="Actualizar"
-            :class="{ 'col-grow': $q.screen.xs }"
-            :loading="cargando"
-            @click="recargarDatos"
-          />
-          <q-btn
-            outline
-            unelevated
-            no-caps
-            color="primary"
-            icon="inbox"
-            :label="etiquetaBotonBandeja"
-            :class="{ 'col-grow': $q.screen.xs }"
-            :to="rutaBandejaRol"
-          />
-          <q-btn
-            v-if="puedeCrearTicket"
-            unelevated
-            no-caps
-            color="primary"
-            icon="add"
-            label="Nuevo Ticket"
-            :class="{ 'col-grow': $q.screen.xs }"
-            to="/tickets/nuevo"
-          />
-        </div>
+      <div class="col-12 col-lg-auto row items-center q-gutter-sm shrink-0">
+        <q-btn
+          outline
+          unelevated
+          no-caps
+          color="secondary"
+          icon="refresh"
+          label="Actualizar"
+          :class="{ 'col-grow': $q.screen.xs }"
+          :loading="cargando"
+          @click="recargarDatos"
+        />
+        <q-btn
+          outline
+          unelevated
+          no-caps
+          color="primary"
+          icon="inbox"
+          :label="etiquetaBotonBandeja"
+          :class="{ 'col-grow': $q.screen.xs }"
+          :to="rutaBandejaRol"
+        />
+        <q-btn
+          v-if="puedeCrearTicket"
+          unelevated
+          no-caps
+          color="primary"
+          icon="add"
+          label="Nuevo Ticket"
+          :class="{ 'col-grow': $q.screen.xs }"
+          to="/tickets/nuevo"
+        />
       </div>
     </div>
 
@@ -2047,8 +2045,15 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-.top-bar {
-  border-bottom: 1px solid var(--border-subtle);
+.dashboard-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.min-w-0 {
+  min-width: 0;
 }
 
 .relojes-resumen {
