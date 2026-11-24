@@ -1,4 +1,4 @@
-<!-- 🛡️ [FASE 2.3 - TICKETS] Modal de detalle, transiciones de estado RBAC y bitácora del ticket -->
+<!-- 🛡️ [FASE 2.3 / 3.3 - TICKETS] Modal de detalle, transiciones RBAC, transferencia de área, pausas tipificadas y bitácora -->
 <template>
   <q-dialog
     :model-value="modelValue"
@@ -11,13 +11,17 @@
           <span class="text-subtitle1 text-weight-bold text-dark">
             {{ ticket?.folio ?? 'Detalle de Ticket' }}
           </span>
-          <span v-if="ticket" class="chip" :class="claseChipPrioridad(ticket.prioridad)">
-            <span class="chip__dot" />
-            {{ ticket.prioridad }}
-          </span>
+          <PrioridadBadge v-if="ticket" :prioridad="ticket.prioridad" />
           <span v-if="ticket" class="chip" :class="ESTADO_CLASS[ticket.estado]">
             <span class="chip__dot" />
             {{ ticket.estado }}
+          </span>
+          <span
+            v-if="ticket?.tipo_cierre"
+            class="chip"
+            :class="ticket.tipo_cierre === 'Administrativo' ? 'warn' : 'ok'"
+          >
+            Cierre {{ ticket.tipo_cierre }}
           </span>
         </div>
         <q-btn flat round dense icon="close" color="grey-7" @click="cerrarDialogo" />
@@ -139,6 +143,17 @@
               @click="seleccionarAccion('Asignado')"
             />
             <q-btn
+              v-if="puedeTransferir"
+              :outline="accionActiva !== 'TRANSFERIR'"
+              :unelevated="accionActiva === 'TRANSFERIR'"
+              color="secondary"
+              no-caps
+              dense
+              icon="swap_horiz"
+              label="Transferir de Área TI"
+              @click="seleccionarAccion('TRANSFERIR')"
+            />
+            <q-btn
               v-if="puedeIniciar"
               :unelevated="accionActiva === 'En Progreso'"
               :outline="accionActiva !== 'En Progreso'"
@@ -172,6 +187,17 @@
               @click="seleccionarAccion('Resuelto - Por Verificar')"
             />
             <q-btn
+              v-if="puedeCierreDirectoN1"
+              :unelevated="accionActiva === 'Cerrado'"
+              :outline="accionActiva !== 'Cerrado'"
+              color="positive"
+              no-caps
+              dense
+              icon="verified"
+              label="Cierre Directo N1"
+              @click="seleccionarAccion('Cerrado')"
+            />
+            <q-btn
               v-if="puedeCerrar"
               :unelevated="accionActiva === 'Cerrado'"
               :outline="accionActiva !== 'Cerrado'"
@@ -193,10 +219,59 @@
               label="Reabrir Ticket"
               @click="seleccionarAccion('Reabierto')"
             />
+            <q-btn
+              v-if="puedeCerrarNoResuelto"
+              :unelevated="accionActiva === 'No Resuelto'"
+              :outline="accionActiva !== 'No Resuelto'"
+              color="warning"
+              no-caps
+              dense
+              icon="highlight_off"
+              label="Cerrar como No Resuelto"
+              @click="seleccionarAccion('No Resuelto')"
+            />
+            <q-btn
+              v-if="puedeCancelar"
+              :unelevated="accionActiva === 'Cancelado'"
+              :outline="accionActiva !== 'Cancelado'"
+              color="negative"
+              no-caps
+              dense
+              icon="cancel"
+              label="Cancelar Ticket"
+              @click="seleccionarAccion('Cancelado')"
+            />
           </div>
 
           <!-- Formulario dinámico según la acción seleccionada -->
           <div v-if="accionActiva" class="q-mt-sm q-gutter-y-sm">
+            <!-- 🛡️ [FASE 3.3 - TICKETS] Aviso y candado visual de Asignación en Suplencia para MESA_TECNICA -->
+            <q-banner
+              v-if="accionActiva === 'Asignado' && esAsignacionSuplenciaMesa"
+              dense
+              rounded
+              class="text-caption q-pa-sm"
+              :class="slaAsignacionVencido ? 'banner-suplencia-ok' : 'banner-suplencia-warn'"
+            >
+              <template #avatar>
+                <q-icon
+                  :name="slaAsignacionVencido ? 'gpp_good' : 'warning_amber'"
+                  :color="slaAsignacionVencido ? 'primary' : 'warning'"
+                  size="20px"
+                />
+              </template>
+              <span v-if="slaAsignacionVencido">
+                <strong>Asignación en Suplencia (SLA vencido):</strong> Este ticket superó la meta de
+                {{ ticket.tiempo_max_asignacion_minutos }} min. La intervención de Mesa Técnica quedará
+                registrada en bitácora.
+              </span>
+              <span v-else>
+                <strong>Suplencia anticipada:</strong> El SLA de asignación aún está vigente (meta:
+                {{ ticket.tiempo_max_asignacion_minutos }} min). Para asignar por ausencia del Gerente
+                de Área, debes indicar el motivo obligatorio en el comentario.
+              </span>
+            </q-banner>
+
             <q-select
               v-if="accionActiva === 'Asignado'"
               v-model="form.id_tecnico"
@@ -220,18 +295,39 @@
               "
             />
 
-            <q-input
-              v-if="accionActiva === 'En Espera'"
-              v-model="form.motivo_pausa"
+            <!-- 🛡️ [FASE 3.3 - TICKETS] Selector de Sub-Gerencia TI destino para Transferencia -->
+            <q-select
+              v-if="accionActiva === 'TRANSFERIR'"
+              v-model="form.id_departamento_nuevo"
+              :options="opcionesAreasTiDestino"
+              option-value="id"
+              :option-label="(d) => `${d.nombre} (${d.codigo})`"
+              emit-value
+              map-options
               outlined
               dense
-              maxlength="100"
-              counter
-              label="Motivo de pausa *"
-              placeholder="Ej. Esperando repuesto / confirmación del usuario"
+              label="Sub-Gerencia TI destino *"
+              :loading="departmentsStore.cargando"
+              hint="El ticket pasará a estado Abierto y sin técnico en la bandeja del área destino"
             />
 
-            <template v-if="accionActiva === 'Resuelto - Por Verificar'">
+            <!-- 🛡️ [FASE 3.3 - TICKETS] Selector tipificado obligatorio de pausa -->
+            <q-select
+              v-if="accionActiva === 'En Espera'"
+              v-model="form.motivo_pausa"
+              :options="[...MOTIVOS_PAUSA]"
+              outlined
+              dense
+              label="Motivo tipificado de pausa *"
+              hint="Selecciona la causa externa que detiene el reloj SLA; agrega detalle opcional abajo"
+            />
+
+            <template
+              v-if="
+                accionActiva === 'Resuelto - Por Verificar' ||
+                (accionActiva === 'Cerrado' && ticket.estado === 'Abierto')
+              "
+            >
               <q-input
                 v-model="form.causa_raiz"
                 outlined
@@ -239,7 +335,8 @@
                 type="textarea"
                 rows="2"
                 maxlength="2000"
-                label="Causa raíz (opcional)"
+                label="Causa raíz *"
+                placeholder="Ej. Servicio detenido, conector RJ-45 dañado o permiso faltante en sistema"
               />
               <q-input
                 v-model="form.solucion_aplicada"
@@ -249,23 +346,59 @@
                 rows="3"
                 maxlength="2000"
                 label="Solución aplicada *"
+                placeholder="Describe los pasos técnicos ejecutados para resolver la incidencia"
               />
               <q-checkbox
-                v-if="rol === 'MESA_TECNICA'"
+                v-if="accionActiva === 'Resuelto - Por Verificar' && rol === 'MESA_TECNICA'"
                 v-model="form.cerrar_inmediato"
                 dense
                 color="primary"
                 label="Usuario confirmó conformidad en llamada (cerrar ticket inmediatamente)"
               />
+              <q-checkbox
+                v-if="accionActiva === 'Cerrado' && ticket.estado === 'Abierto'"
+                v-model="form.conformidad_usuario"
+                dense
+                color="positive"
+                label="El solicitante confirmó conformidad durante la llamada (Cierre Directo N1)"
+              />
             </template>
 
-            <q-checkbox
-              v-if="accionActiva === 'Cerrado'"
-              v-model="form.conformidad_usuario"
+            <q-input
+              v-if="accionActiva === 'No Resuelto'"
+              v-model="form.causa_raiz"
+              outlined
               dense
-              color="primary"
-              label="El usuario solicitante confirma conformidad con la solución"
+              type="textarea"
+              rows="2"
+              maxlength="2000"
+              label="Causa raíz / Dictamen técnico *"
+              placeholder="Ej. Equipo irreparable, sin repuesto o rechazado por política"
             />
+
+            <!-- 🛡️ [FASE 3.3 - TICKETS] Tipo de Cierre: Confirmado vs Administrativo -->
+            <template v-if="accionActiva === 'Cerrado' && ticket.estado !== 'Abierto'">
+              <q-option-group
+                v-model="form.tipo_cierre"
+                inline
+                dense
+                color="primary"
+                :options="[
+                  { label: 'Confirmado con usuario', value: 'Confirmado' },
+                  { label: 'Cierre administrativo (usuario ilocalizable)', value: 'Administrativo' },
+                ]"
+              />
+              <q-checkbox
+                v-if="form.tipo_cierre === 'Confirmado'"
+                v-model="form.conformidad_usuario"
+                dense
+                color="primary"
+                label="El usuario solicitante confirma conformidad con la solución"
+              />
+              <div v-else class="text-caption text-warning">
+                El cierre administrativo fija conformidad en <strong>No</strong> y exige documentar los intentos de contacto en el comentario.
+              </div>
+            </template>
 
             <q-input
               v-model="form.comentario"
@@ -274,11 +407,7 @@
               type="textarea"
               rows="2"
               maxlength="1000"
-              :label="
-                accionActiva === 'Reabierto'
-                  ? 'Motivo de reapertura *'
-                  : 'Comentario para bitácora (opcional)'
-              "
+              :label="etiquetaComentarioAccion"
             />
 
             <div class="row justify-end q-gutter-sm q-mt-xs">
@@ -286,14 +415,10 @@
               <q-btn
                 unelevated
                 no-caps
-                color="primary"
+                :color="colorBotonConfirmar"
                 :loading="ticketStore.guardando"
-                :label="
-                  accionActiva === 'Resuelto - Por Verificar' && form.cerrar_inmediato
-                    ? 'Resolver y Cerrar'
-                    : 'Confirmar transición'
-                "
-                @click="ejecutarTransicion"
+                :label="etiquetaBotonConfirmar"
+                @click="ejecutarAccion"
               />
             </div>
           </div>
@@ -343,10 +468,28 @@
                       <span class="text-caption muted">({{ item.rol_accion }})</span>
                     </div>
                   </template>
-                  <div class="text-caption text-dark">
+                  <div class="row items-center q-gutter-xs text-caption text-dark">
                     <span v-if="item.estado_anterior" class="muted">{{ item.estado_anterior }} → </span>
-                    <span class="chip q-ml-xs" :class="ESTADO_CLASS[item.estado_nuevo]">
+                    <span class="chip" :class="ESTADO_CLASS[item.estado_nuevo]">
+                      <span class="chip__dot" />
                       {{ item.estado_nuevo }}
+                    </span>
+                    <span
+                      v-if="item.departamento_anterior && item.departamento_nuevo"
+                      class="chip info"
+                    >
+                      <q-icon name="swap_horiz" size="13px" />
+                      {{ item.departamento_anterior }} → {{ item.departamento_nuevo }}
+                    </span>
+                    <span v-if="item.es_suplencia" class="chip warn">
+                      Suplencia Mesa Técnica
+                    </span>
+                    <span
+                      v-if="item.tipo_cierre"
+                      class="chip"
+                      :class="item.tipo_cierre === 'Administrativo' ? 'warn' : 'ok'"
+                    >
+                      Cierre {{ item.tipo_cierre }}
                     </span>
                   </div>
                   <div v-if="item.motivo_pausa" class="text-caption text-warning q-mt-xs">
@@ -368,17 +511,39 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
+import PrioridadBadge from '@/components/common/PrioridadBadge.vue';
 import TicketComentariosAdjuntos from '@/components/tickets/TicketComentariosAdjuntos.vue';
-import { claseChipPrioridad, ESTADO_CLASS } from '@/composables/useTickets';
-import type {
-  EstadoTicket,
-  PatchTicketEstadoPayload,
-  TecnicoDisponible,
-  Ticket,
-  TicketBitacoraItem,
+import { ESTADO_CLASS } from '@/composables/useTickets';
+import {
+  MOTIVOS_PAUSA,
+  type EstadoTicket,
+  type MotivoPausa,
+  type PatchTicketEstadoPayload,
+  type TecnicoDisponible,
+  type Ticket,
+  type TicketBitacoraItem,
+  type TipoCierre,
 } from '@/models/types';
 import { useAuthStore } from '@/stores/authStore';
+import { useDepartmentsStore } from '@/stores/useDepartmentsStore';
+import { formatearFechaHora } from '@/utils/formatFecha';
 import { useTicketStore } from '@/stores/ticketStore';
+
+type AccionDetalle = EstadoTicket | 'TRANSFERIR';
+
+const ESTADOS_TERMINALES_DETALLE: readonly EstadoTicket[] = [
+  'Cerrado',
+  'No Resuelto',
+  'Cancelado',
+];
+
+function normalizarTexto(valor: string | null | undefined): string {
+  return (valor ?? '')
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
 
 const props = defineProps<{
   modelValue: boolean;
@@ -393,23 +558,36 @@ const emit = defineEmits<{
 
 const $q = useQuasar();
 const authStore = useAuthStore();
+const departmentsStore = useDepartmentsStore();
 const ticketStore = useTicketStore();
 
 const bitacora = ref<TicketBitacoraItem[]>([]);
 const cargandoBitacora = ref(false);
 const opcionesTecnicos = ref<TecnicoDisponible[]>([]);
 const cargandoTecnicos = ref(false);
-const accionActiva = ref<EstadoTicket | null>(null);
+const accionActiva = ref<AccionDetalle | null>(null);
 const errorAccion = ref<string | null>(null);
 const tabActiva = ref<'resumen' | 'comentarios' | 'adjuntos' | 'bitacora'>('resumen');
 
-const form = reactive({
-  id_tecnico: null as number | null,
-  motivo_pausa: '',
+const form = reactive<{
+  id_tecnico: number | null;
+  id_departamento_nuevo: number | null;
+  motivo_pausa: MotivoPausa | null;
+  causa_raiz: string;
+  solucion_aplicada: string;
+  comentario: string;
+  conformidad_usuario: boolean;
+  tipo_cierre: TipoCierre;
+  cerrar_inmediato: boolean;
+}>({
+  id_tecnico: null,
+  id_departamento_nuevo: null,
+  motivo_pausa: null,
   causa_raiz: '',
   solucion_aplicada: '',
   comentario: '',
   conformidad_usuario: true,
+  tipo_cierre: 'Confirmado',
   cerrar_inmediato: false,
 });
 
@@ -427,6 +605,29 @@ const esTecnicoAsignado = computed(
     (rol.value === 'TECNICO' || (rol.value === 'MESA_TECNICA' && esTicketMesaTecnica.value)),
 );
 
+// 🛡️ [FASE 3.3 - TICKETS] Evaluación de asignación en suplencia por Mesa Técnica
+const esAsignacionSuplenciaMesa = computed(
+  () => rol.value === 'MESA_TECNICA' && props.ticket !== null && !esTicketMesaTecnica.value,
+);
+
+const slaAsignacionVencido = computed(() => {
+  if (!props.ticket || !props.ticket.activa_suplencia) return false;
+  const creacionMs = new Date(props.ticket.fecha_creacion).getTime();
+  if (!Number.isFinite(creacionMs)) return false;
+  const minutos = Math.floor((Date.now() - creacionMs) / 60000);
+  return minutos >= Number(props.ticket.tiempo_max_asignacion_minutos);
+});
+
+const opcionesAreasTiDestino = computed(() => {
+  if (!props.ticket) return [];
+  return departmentsStore.departments.filter(
+    (d) =>
+      d.is_activo &&
+      normalizarTexto(d.tipo_departamento) === 'SUB-GERENCIA TI' &&
+      d.id !== props.ticket?.id_departamento,
+  );
+});
+
 const puedeAsignar = computed(() => {
   if (!props.ticket) return false;
   const estadosAsignables: readonly EstadoTicket[] = [
@@ -443,6 +644,17 @@ const puedeAsignar = computed(() => {
     return dptoUsuario === undefined || dptoUsuario === props.ticket.id_departamento;
   }
   return false;
+});
+
+const puedeTransferir = computed(() => {
+  if (!props.ticket) return false;
+  if (ESTADOS_TERMINALES_DETALLE.includes(props.ticket.estado)) return false;
+  if (rol.value === 'ADMINISTRADOR' || rol.value === 'MESA_TECNICA') return true;
+  if (rol.value === 'GERENTE_AREA') {
+    const dptoUsuario = authStore.usuario?.id_departamento;
+    return dptoUsuario === undefined || dptoUsuario === props.ticket.id_departamento;
+  }
+  return esTecnicoAsignado.value;
 });
 
 const puedeIniciar = computed(() => {
@@ -464,36 +676,114 @@ const puedeResolver = computed(() => {
   );
 });
 
+const puedeCierreDirectoN1 = computed(
+  () =>
+    props.ticket?.estado === 'Abierto' &&
+    (rol.value === 'MESA_TECNICA' || rol.value === 'ADMINISTRADOR'),
+);
+
 const puedeCerrar = computed(
   () => props.ticket?.estado === 'Resuelto - Por Verificar' && rol.value === 'MESA_TECNICA',
 );
 
 const puedeReabrir = computed(
   () =>
-    props.ticket?.estado === 'Resuelto - Por Verificar' &&
+    (props.ticket?.estado === 'Resuelto - Por Verificar' || props.ticket?.estado === 'Cerrado') &&
     (rol.value === 'MESA_TECNICA' || rol.value === 'ADMINISTRADOR'),
 );
+
+const puedeCancelar = computed(() => {
+  if (!props.ticket) return false;
+  if (!['Abierto', 'Asignado'].includes(props.ticket.estado)) return false;
+  return rol.value === 'MESA_TECNICA' || rol.value === 'ADMINISTRADOR';
+});
+
+const puedeCerrarNoResuelto = computed(() => {
+  if (!props.ticket) return false;
+  if (!['En Progreso', 'En Espera'].includes(props.ticket.estado)) return false;
+  if (
+    esTecnicoAsignado.value ||
+    rol.value === 'MESA_TECNICA' ||
+    rol.value === 'ADMINISTRADOR'
+  ) {
+    return true;
+  }
+  if (rol.value === 'GERENTE_AREA') {
+    const dptoUsuario = authStore.usuario?.id_departamento;
+    return dptoUsuario === undefined || dptoUsuario === props.ticket.id_departamento;
+  }
+  return false;
+});
 
 const tieneAccionesDisponibles = computed(
   () =>
     puedeAsignar.value ||
+    puedeTransferir.value ||
     puedeIniciar.value ||
     puedePausar.value ||
     puedeResolver.value ||
+    puedeCierreDirectoN1.value ||
     puedeCerrar.value ||
-    puedeReabrir.value,
+    puedeReabrir.value ||
+    puedeCancelar.value ||
+    puedeCerrarNoResuelto.value,
 );
+
+const etiquetaComentarioAccion = computed(() => {
+  if (accionActiva.value === 'TRANSFERIR') {
+    return 'Justificación técnica de la transferencia * (mín. 10 caracteres)';
+  }
+  if (accionActiva.value === 'Asignado' && esAsignacionSuplenciaMesa.value && !slaAsignacionVencido.value) {
+    return 'Motivo de suplencia por ausencia del Gerente de Área *';
+  }
+  if (accionActiva.value === 'En Espera') {
+    return 'Detalle adicional de la pausa (opcional)';
+  }
+  if (accionActiva.value === 'Cerrado' && props.ticket?.estado !== 'Abierto' && form.tipo_cierre === 'Administrativo') {
+    return 'Registro de intentos de contacto al usuario (obligatorio) *';
+  }
+  if (accionActiva.value === 'Reabierto') return 'Motivo de reapertura *';
+  if (accionActiva.value === 'Cancelado') return 'Motivo de cancelación *';
+  if (accionActiva.value === 'No Resuelto') return 'Observación para bitácora y solicitante *';
+  return 'Comentario para bitácora (opcional)';
+});
+
+const colorBotonConfirmar = computed(() => {
+  if (accionActiva.value === 'Cancelado') return 'negative';
+  if (accionActiva.value === 'No Resuelto') return 'warning';
+  if (accionActiva.value === 'TRANSFERIR') return 'secondary';
+  if (accionActiva.value === 'Cerrado') return 'positive';
+  return 'primary';
+});
+
+const etiquetaBotonConfirmar = computed(() => {
+  if (accionActiva.value === 'TRANSFERIR') return 'Confirmar transferencia';
+  if (accionActiva.value === 'Cancelado') return 'Confirmar cancelación';
+  if (accionActiva.value === 'No Resuelto') return 'Confirmar cierre sin solución';
+  if (accionActiva.value === 'Cerrado' && props.ticket?.estado === 'Abierto') {
+    return 'Confirmar Cierre Directo N1';
+  }
+  if (accionActiva.value === 'Cerrado' && form.tipo_cierre === 'Administrativo') {
+    return 'Confirmar Cierre Administrativo';
+  }
+  if (accionActiva.value === 'Resuelto - Por Verificar' && form.cerrar_inmediato) {
+    return 'Resolver y Cerrar';
+  }
+  return 'Confirmar transición';
+});
 
 function resetearFormulario(): void {
   tabActiva.value = props.tabInicial ?? 'resumen';
   accionActiva.value = null;
   errorAccion.value = null;
   form.id_tecnico = null;
-  form.motivo_pausa = '';
+  form.id_departamento_nuevo = null;
+  form.motivo_pausa = null;
   form.causa_raiz = '';
   form.solucion_aplicada = '';
   form.comentario = '';
   form.conformidad_usuario = true;
+  form.tipo_cierre = 'Confirmado';
   form.cerrar_inmediato = false;
 }
 
@@ -522,11 +812,11 @@ watch(
   },
 );
 
-async function seleccionarAccion(estado: EstadoTicket): Promise<void> {
-  accionActiva.value = estado;
+async function seleccionarAccion(accion: AccionDetalle): Promise<void> {
+  accionActiva.value = accion;
   errorAccion.value = null;
 
-  if (estado === 'Asignado' && props.ticket) {
+  if (accion === 'Asignado' && props.ticket) {
     cargandoTecnicos.value = true;
     try {
       opcionesTecnicos.value = await ticketStore.cargarTecnicosDisponibles(
@@ -538,12 +828,49 @@ async function seleccionarAccion(estado: EstadoTicket): Promise<void> {
     } finally {
       cargandoTecnicos.value = false;
     }
+  } else if (accion === 'TRANSFERIR' && departmentsStore.departments.length === 0) {
+    try {
+      await departmentsStore.cargarDepartamentos();
+    } catch (err: unknown) {
+      errorAccion.value =
+        err instanceof Error ? err.message : 'No se pudieron cargar las áreas TI destino.';
+    }
   }
 }
 
-async function ejecutarTransicion(): Promise<void> {
+async function ejecutarAccion(): Promise<void> {
   if (!props.ticket || !accionActiva.value) return;
   errorAccion.value = null;
+
+  // 🛡️ [FASE 3.3 - TICKETS] Flujo dedicado para Transferencia de Área TI
+  if (accionActiva.value === 'TRANSFERIR') {
+    if (!form.id_departamento_nuevo) {
+      errorAccion.value = 'Debes seleccionar la Sub-Gerencia TI destino.';
+      return;
+    }
+    if (form.comentario.trim().length < 10) {
+      errorAccion.value =
+        'Debes indicar una justificación técnica de al menos 10 caracteres para transferir el ticket.';
+      return;
+    }
+    try {
+      const res = await ticketStore.transferirTicket(props.ticket.id, {
+        id_departamento_nuevo: form.id_departamento_nuevo,
+        comentario: form.comentario.trim(),
+      });
+      $q.notify({
+        type: 'positive',
+        message: `Ticket ${res.folio} transferido de ${res.departamento_anterior} a ${res.departamento_nuevo}.`,
+        position: 'top-right',
+      });
+      emit('actualizado');
+      emit('update:modelValue', false);
+    } catch (err: unknown) {
+      errorAccion.value =
+        err instanceof Error ? err.message : 'No fue posible transferir el ticket.';
+    }
+    return;
+  }
 
   const payload: PatchTicketEstadoPayload = {
     estado_nuevo: accionActiva.value,
@@ -554,35 +881,84 @@ async function ejecutarTransicion(): Promise<void> {
       errorAccion.value = 'Debes seleccionar un técnico especialista.';
       return;
     }
+    if (esAsignacionSuplenciaMesa.value && !slaAsignacionVencido.value && !form.comentario.trim()) {
+      errorAccion.value =
+        'El SLA aún está vigente; indica en el comentario el motivo de suplencia por ausencia del Gerente de Área.';
+      return;
+    }
     payload.id_tecnico = form.id_tecnico;
   }
 
   if (accionActiva.value === 'En Espera') {
-    if (!form.motivo_pausa.trim()) {
-      errorAccion.value = 'Debes indicar el motivo de la pausa.';
+    if (!form.motivo_pausa) {
+      errorAccion.value = 'Debes seleccionar el motivo tipificado de la pausa.';
       return;
     }
-    payload.motivo_pausa = form.motivo_pausa.trim();
+    payload.motivo_pausa = form.motivo_pausa;
   }
 
   if (accionActiva.value === 'Resuelto - Por Verificar') {
+    if (!form.causa_raiz.trim()) {
+      errorAccion.value = 'Debes documentar la causa raíz para alimentar la Base de Soluciones.';
+      return;
+    }
     if (!form.solucion_aplicada.trim()) {
       errorAccion.value = 'Debes documentar la solución aplicada.';
       return;
     }
+    payload.causa_raiz = form.causa_raiz.trim();
     payload.solucion_aplicada = form.solucion_aplicada.trim();
-    if (form.causa_raiz.trim()) {
-      payload.causa_raiz = form.causa_raiz.trim();
-    }
   }
 
   if (accionActiva.value === 'Cerrado') {
-    payload.conformidad_usuario = form.conformidad_usuario;
+    if (props.ticket.estado === 'Abierto') {
+      if (!form.causa_raiz.trim()) {
+        errorAccion.value = 'Debes documentar la causa raíz para el Cierre Directo Nivel 1.';
+        return;
+      }
+      if (!form.solucion_aplicada.trim()) {
+        errorAccion.value = 'Debes documentar la solución aplicada para el Cierre Directo Nivel 1.';
+        return;
+      }
+      payload.causa_raiz = form.causa_raiz.trim();
+      payload.solucion_aplicada = form.solucion_aplicada.trim();
+      payload.conformidad_usuario = form.conformidad_usuario;
+      payload.tipo_cierre = 'Confirmado';
+    } else {
+      payload.tipo_cierre = form.tipo_cierre;
+      if (form.tipo_cierre === 'Administrativo') {
+        if (!form.comentario.trim()) {
+          errorAccion.value =
+            'Debes documentar en el comentario los intentos de contacto para el Cierre Administrativo.';
+          return;
+        }
+        payload.conformidad_usuario = false;
+      } else {
+        payload.conformidad_usuario = form.conformidad_usuario;
+      }
+    }
   }
 
   if (accionActiva.value === 'Reabierto' && !form.comentario.trim()) {
     errorAccion.value = 'Debes indicar el motivo de reapertura.';
     return;
+  }
+
+  if (accionActiva.value === 'Cancelado' && !form.comentario.trim()) {
+    errorAccion.value = 'Debes indicar el motivo de cancelación.';
+    return;
+  }
+
+  if (accionActiva.value === 'No Resuelto') {
+    if (!form.causa_raiz.trim()) {
+      errorAccion.value = 'Debes indicar la causa raíz o dictamen técnico.';
+      return;
+    }
+    if (!form.comentario.trim()) {
+      errorAccion.value = 'Debes indicar la observación para bitácora y solicitante.';
+      return;
+    }
+    payload.causa_raiz = form.causa_raiz.trim();
   }
 
   if (form.comentario.trim()) {
@@ -600,6 +976,7 @@ async function ejecutarTransicion(): Promise<void> {
       try {
         const payloadCierre: PatchTicketEstadoPayload = {
           estado_nuevo: 'Cerrado',
+          tipo_cierre: 'Confirmado',
           conformidad_usuario: true,
           ...(form.comentario.trim() ? { comentario: form.comentario.trim() } : {}),
         };
@@ -642,7 +1019,7 @@ function cerrarDialogo(): void {
 }
 
 function formatearFecha(fecha: string): string {
-  return new Date(fecha).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' });
+  return formatearFechaHora(fecha);
 }
 </script>
 
@@ -679,6 +1056,18 @@ function formatearFecha(fecha: string): string {
   background: var(--brand-primary-soft);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
+}
+
+.banner-suplencia-ok {
+  background: var(--info-soft);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+}
+
+.banner-suplencia-warn {
+  background: var(--warning-soft);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
 }
 
 .whitespace-preline {

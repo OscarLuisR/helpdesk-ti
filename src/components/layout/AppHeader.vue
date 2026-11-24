@@ -31,25 +31,6 @@
       <q-space />
 
       <div class="row items-center no-wrap q-gutter-x-sm">
-        <!-- TODO: Eliminar este selector simulador de rol antes de pasar a producción -->
-        <div class="row items-center no-wrap role-simulator">
-          <span class="role-simulator__tag gt-sm">ROL DEMO</span>
-          <q-select
-            :model-value="authStore.role"
-            :options="OPCIONES_ROL_SIMULADOR"
-            option-value="valor"
-            option-label="etiqueta"
-            emit-value
-            map-options
-            dense
-            outlined
-            options-dense
-            aria-label="Simulador de rol"
-            class="role-select"
-            @update:model-value="cambiarRolSimulado"
-          />
-        </div>
-
         <q-btn
           flat
           unelevated
@@ -125,7 +106,6 @@
 import { ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { useNavigation } from '@/composables/useNavigation';
-import { OPCIONES_ROL_SIMULADOR } from '@/models/auth';
 
 const emit = defineEmits<{
   alternarMenu: [];
@@ -133,7 +113,7 @@ const emit = defineEmits<{
 }>();
 
 const $q = useQuasar();
-const { authStore, inicialesUsuario, etiquetaRolActual, cambiarRolSimulado } = useNavigation();
+const { authStore, inicialesUsuario, etiquetaRolActual } = useNavigation();
 const textoBusqueda = ref('');
 
 function alternarTema(): void {
@@ -191,38 +171,6 @@ function alternarTema(): void {
   border-radius: 6px;
   padding: 2px 6px;
   line-height: 1.2;
-}
-
-.role-simulator {
-  gap: 8px;
-  background: var(--brand-primary-soft);
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  padding: 2px 8px;
-
-  &__tag {
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: var(--brand-ink);
-    letter-spacing: 0.06em;
-  }
-}
-
-.role-select {
-  min-width: 154px;
-
-  :deep(.q-field__control) {
-    height: 28px;
-    min-height: 28px;
-    background: var(--surface-card);
-  }
-
-  :deep(.q-field__native) {
-    font-size: 0.79rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    padding: 0;
-  }
 }
 
 .header-icon-btn {

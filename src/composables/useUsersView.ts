@@ -12,16 +12,81 @@ import {
   type UserFormPayload,
 } from '@/stores/useUsersStore';
 
+// 🛡️ [FASE 3 - UI USUARIOS] Anchos fijos (100%) para evitar scroll horizontal en escritorio y laptop 960px
 export const COLUMNAS_USUARIOS: QTableColumn<User>[] = [
-  { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true },
-  { name: 'nombre', label: 'Nombre', field: 'nombre_completo', align: 'left', sortable: true },
-  { name: 'username', label: 'Usuario', field: 'nick', align: 'left', sortable: true },
-  { name: 'telefono', label: 'Teléfono', field: 'telefono', align: 'left' },
-  { name: 'departamento', label: 'Departamento', field: 'departamento', align: 'left', sortable: true },
-  { name: 'rol', label: 'Rol', field: 'rol', align: 'left', sortable: true },
-  { name: 'estado', label: 'Estado', field: 'estado', align: 'left', sortable: true },
-  { name: 'acciones', label: 'Acciones', field: 'id', align: 'right' },
+  {
+    name: 'id',
+    label: 'ID',
+    field: 'id',
+    align: 'left',
+    sortable: true,
+    style: 'width: 5%;',
+    headerStyle: 'width: 5%;',
+  },
+  {
+    name: 'nombre',
+    label: 'Nombre',
+    field: 'nombre_completo',
+    align: 'left',
+    sortable: true,
+    style: 'width: 21%;',
+    headerStyle: 'width: 21%;',
+  },
+  {
+    name: 'username',
+    label: 'Usuario',
+    field: 'nick',
+    align: 'left',
+    sortable: true,
+    style: 'width: 9%;',
+    headerStyle: 'width: 9%;',
+  },
+  {
+    name: 'telefono',
+    label: 'Teléfono',
+    field: 'telefono',
+    align: 'left',
+    style: 'width: 13%;',
+    headerStyle: 'width: 13%;',
+  },
+  {
+    name: 'departamento',
+    label: 'Departamento',
+    field: 'departamento',
+    align: 'left',
+    sortable: true,
+    style: 'width: 14%;',
+    headerStyle: 'width: 14%;',
+  },
+  {
+    name: 'rol',
+    label: 'Rol',
+    field: 'rol',
+    align: 'left',
+    sortable: true,
+    style: 'width: 14%;',
+    headerStyle: 'width: 14%;',
+  },
+  {
+    name: 'estado',
+    label: 'Estado',
+    field: 'estado',
+    align: 'left',
+    sortable: true,
+    style: 'width: 10%;',
+    headerStyle: 'width: 10%;',
+  },
+  {
+    name: 'acciones',
+    label: 'Acciones',
+    field: 'id',
+    align: 'right',
+    style: 'width: 14%;',
+    headerStyle: 'width: 14%;',
+  },
 ];
+
+export const OPCIONES_FILAS_POR_PAGINA_USUARIOS: number[] = [3, 5, 10, 15, 20];
 
 export const OPCIONES_FILTRO_ESTADO: readonly string[] = ['Todos', 'Activo', 'Inactivo'];
 
@@ -100,12 +165,18 @@ export function useUsersView() {
   const busqueda = ref('');
   const filtroEstado = ref<string>('Todos');
   const filtroRol = ref<number | 'TODOS'>('TODOS');
-  const filasPorPagina = 8;
   const paginacion = ref<NonNullable<QTableProps['pagination']>>({
     sortBy: null,
     descending: false,
     page: 1,
-    rowsPerPage: filasPorPagina,
+    rowsPerPage: 5,
+  });
+
+  const filasPorPagina = computed({
+    get: () => paginacion.value.rowsPerPage ?? 5,
+    set: (val: number) => {
+      paginacion.value = { ...paginacion.value, rowsPerPage: val, page: 1 };
+    },
   });
 
   const paginaActual = computed({
@@ -179,7 +250,7 @@ export function useUsersView() {
   const totalResultados = computed(() => usuariosFiltrados.value.length);
 
   const totalPaginas = computed(() =>
-    Math.max(1, Math.ceil(totalResultados.value / filasPorPagina)),
+    Math.max(1, Math.ceil(totalResultados.value / filasPorPagina.value)),
   );
 
   watch(totalPaginas, (nuevoMax) => {
@@ -189,10 +260,10 @@ export function useUsersView() {
   });
 
   const textoMostrando = computed(() => {
-    if (totalResultados.value === 0) return 'Mostrando 0 de 0 resultados';
-    const desde = (paginaActual.value - 1) * filasPorPagina + 1;
-    const hasta = Math.min(paginaActual.value * filasPorPagina, totalResultados.value);
-    return `Mostrando ${desde} a ${hasta} de ${totalResultados.value} resultados`;
+    if (totalResultados.value === 0) return 'Mostrando 0 de 0 usuarios';
+    const desde = (paginaActual.value - 1) * filasPorPagina.value + 1;
+    const hasta = Math.min(paginaActual.value * filasPorPagina.value, totalResultados.value);
+    return `Mostrando ${desde}–${hasta} de ${totalResultados.value} usuarios`;
   });
 
   function abrirModalCrear(): void {
@@ -304,6 +375,7 @@ export function useUsersView() {
     filtroEstado,
     filtroRol,
     paginacion,
+    filasPorPagina,
     paginaActual,
     totalPaginas,
     usuariosFiltrados,

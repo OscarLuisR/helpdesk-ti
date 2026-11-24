@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia';
-import { USUARIOS_MOCK } from '@/mocks/usuarios';
 import type {
   CredencialesLogin,
   PayloadUsuarioBackend,
@@ -166,19 +165,6 @@ export const useAuthStore = defineStore('auth', {
       );
 
       return this.establecerSesionDesdeBackend(respuesta.data);
-    },
-
-    // Mantenido temporalmente para compatibilidad con AppHeader hasta limpiar simulador de desarrollo
-    cambiarRolDesarrollo(nuevoRol: RolUsuario): void {
-      this.role = nuevoRol;
-      const mockDelRol = USUARIOS_MOCK.find((u) => u.rol === nuevoRol);
-      if (this.usuario && mockDelRol) {
-        this.usuario = {
-          ...this.usuario,
-          rol: nuevoRol,
-          ...(mockDelRol.area ? { area: mockDelRol.area } : {}),
-        };
-      }
     },
 
     async cerrarSesion(): Promise<void> {

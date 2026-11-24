@@ -8,13 +8,55 @@ import {
   type RolItem,
 } from '@/stores/useRolesStore';
 
+// 🛡️ [FASE 3 - UI ROLES] Anchos fijos (100%) para evitar scroll horizontal
 export const COLUMNAS_ROLES: QTableColumn<RolItem>[] = [
-  { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true },
-  { name: 'codigo', label: 'Código', field: 'codigo', align: 'left', sortable: true },
-  { name: 'nombre', label: 'Nombre del Rol', field: 'nombre', align: 'left', sortable: true },
-  { name: 'estado', label: 'Estado', field: 'estado', align: 'left', sortable: true },
-  { name: 'acciones', label: 'Acciones', field: 'id', align: 'right' },
+  {
+    name: 'id',
+    label: 'ID',
+    field: 'id',
+    align: 'left',
+    sortable: true,
+    style: 'width: 7%;',
+    headerStyle: 'width: 7%;',
+  },
+  {
+    name: 'codigo',
+    label: 'Código',
+    field: 'codigo',
+    align: 'left',
+    sortable: true,
+    style: 'width: 20%;',
+    headerStyle: 'width: 20%;',
+  },
+  {
+    name: 'nombre',
+    label: 'Nombre del Rol',
+    field: 'nombre',
+    align: 'left',
+    sortable: true,
+    style: 'width: 49%;',
+    headerStyle: 'width: 49%;',
+  },
+  {
+    name: 'estado',
+    label: 'Estado',
+    field: 'estado',
+    align: 'left',
+    sortable: true,
+    style: 'width: 12%;',
+    headerStyle: 'width: 12%;',
+  },
+  {
+    name: 'acciones',
+    label: 'Acciones',
+    field: 'id',
+    align: 'right',
+    style: 'width: 12%;',
+    headerStyle: 'width: 12%;',
+  },
 ];
+
+export const OPCIONES_FILAS_POR_PAGINA_ROLES: number[] = [3, 5, 10, 15, 20];
 
 export const OPCIONES_FILTRO_ESTADO_ROL: readonly string[] = ['Todos', 'Activo', 'Inactivo'];
 
@@ -44,12 +86,18 @@ export function useRolesView() {
   const busqueda = ref('');
   const filtroEstado = ref<string>('Todos');
 
-  const filasPorPagina = 6;
   const paginacion = ref<NonNullable<QTableProps['pagination']>>({
     sortBy: null,
     descending: false,
     page: 1,
-    rowsPerPage: filasPorPagina,
+    rowsPerPage: 5,
+  });
+
+  const filasPorPagina = computed({
+    get: () => paginacion.value.rowsPerPage ?? 5,
+    set: (val: number) => {
+      paginacion.value = { ...paginacion.value, rowsPerPage: val, page: 1 };
+    },
   });
 
   const paginaActual = computed({
@@ -82,15 +130,15 @@ export function useRolesView() {
   });
 
   const totalPaginas = computed(() =>
-    Math.max(1, Math.ceil(rolesFiltrados.value.length / filasPorPagina)),
+    Math.max(1, Math.ceil(rolesFiltrados.value.length / filasPorPagina.value)),
   );
 
   const textoMostrando = computed(() => {
     const total = rolesFiltrados.value.length;
-    if (total === 0) return '0 roles';
-    const inicio = (paginaActual.value - 1) * filasPorPagina + 1;
-    const fin = Math.min(inicio + filasPorPagina - 1, total);
-    return `Mostrando ${inicio}-${fin} de ${total} roles`;
+    if (total === 0) return 'Mostrando 0 de 0 roles';
+    const inicio = (paginaActual.value - 1) * filasPorPagina.value + 1;
+    const fin = Math.min(paginaActual.value * filasPorPagina.value, total);
+    return `Mostrando ${inicio}–${fin} de ${total} roles`;
   });
 
   watch([busqueda, filtroEstado], () => {
@@ -195,6 +243,7 @@ export function useRolesView() {
     busqueda,
     filtroEstado,
     paginacion,
+    filasPorPagina,
     paginaActual,
     totalPaginas,
     rolesFiltrados,

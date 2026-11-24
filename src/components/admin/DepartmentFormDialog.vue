@@ -10,7 +10,7 @@
     <q-card flat bordered class="dialog-card" :class="{ 'no-border-radius full-height': $q.screen.lt.sm }">
       <q-card-section class="row items-center justify-between q-pb-sm dialog-header">
         <div>
-          <div class="text-subtitle1 text-weight-bold text-dark">
+          <div class="text-subtitle1 text-weight-bold text-ink">
             {{ departamentoEditar ? 'Editar Departamento' : 'Nuevo Departamento' }}
           </div>
           <div class="text-caption muted">
@@ -89,6 +89,25 @@
               />
             </div>
 
+            <div v-if="tipoSeleccionado" class="col-12">
+              <div class="tipo-ayuda-box">
+                <div class="row items-center q-gutter-x-sm q-mb-xs">
+                  <TipoDepartamentoBadge
+                    :nombre="tipoSeleccionado.nombre"
+                    :id-tipo="tipoSeleccionado.id"
+                    compacto
+                  />
+                  <span class="text-caption muted">Alcance del tipo seleccionado</span>
+                </div>
+                <div class="text-caption tipo-ayuda-box__texto">
+                  {{
+                    tipoSeleccionado.descripcion ||
+                    'Este tipo aún no tiene descripción registrada.'
+                  }}
+                </div>
+              </div>
+            </div>
+
             <div class="col-12 col-md-6">
               <q-input
                 v-model="responsable"
@@ -119,7 +138,7 @@
             <div v-if="departamentoEditar" class="col-12">
               <div class="row items-center justify-between toggle-row q-px-md q-py-xs full-height">
                 <div>
-                  <div class="text-body2 text-weight-medium text-dark">Estado</div>
+                  <div class="text-body2 text-weight-medium text-ink">Estado</div>
                   <div class="text-caption muted">{{ activoToggle ? 'Activo' : 'Inactivo' }}</div>
                 </div>
                 <q-toggle v-model="activoToggle" color="primary" />
@@ -140,8 +159,9 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useQuasar, type QForm } from 'quasar';
+import TipoDepartamentoBadge from '@/components/common/TipoDepartamentoBadge.vue';
 import type { Department, DepartmentFormPayload } from '@/stores/useDepartmentsStore';
 import type { TipoDepartamentoItem } from '@/stores/useTipoDepartamentosStore';
 
@@ -169,6 +189,11 @@ const ubicacion = ref('');
 const idTipoDepartamento = ref<number | null>(null);
 const formRef = ref<QForm | null>(null);
 const activoToggle = ref(true);
+
+const tipoSeleccionado = computed<TipoDepartamentoItem | null>(() => {
+  if (!idTipoDepartamento.value) return null;
+  return props.tiposDepartamento.find((t) => t.id === idTipoDepartamento.value) ?? null;
+});
 
 watch(
   () => props.abierto,
@@ -234,5 +259,17 @@ function alGuardar(): void {
 .dialog-card {
   width: 100vw;
   max-width: 720px;
+}
+
+.tipo-ayuda-box {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+
+  &__texto {
+    color: var(--text-secondary);
+    line-height: 1.45;
+  }
 }
 </style>

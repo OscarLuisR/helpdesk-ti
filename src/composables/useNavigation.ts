@@ -1,9 +1,17 @@
 import { computed, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
-import { OPCIONES_ROL_SIMULADOR } from '@/models/auth';
 import type { RolUsuario } from '@/models/types';
 import { useAuthStore } from '@/stores/authStore';
+
+const ETIQUETA_ROL: Record<RolUsuario, string> = {
+  USUARIO: 'Usuario (Solicitante)',
+  MESA_TECNICA: 'Mesa Técnica',
+  GERENTE_AREA: 'Gerente de Área',
+  TECNICO: 'Técnico',
+  DIRECTOR: 'Director',
+  ADMINISTRADOR: 'Administrador',
+};
 
 export interface MenuItem {
   id: string;
@@ -97,6 +105,13 @@ export const MENU_POR_ROL: Record<RolUsuario, readonly MenuItem[]> = {
       icono: 'task_alt',
       ruta: '/tickets/cierre',
     },
+    // 🛡️ [FASE 3.5 - VISTAS] Acceso directo a Reportes y SLAs para Mesa Técnica
+    {
+      id: 'mesa-reportes',
+      titulo: 'Reportes y SLAs',
+      icono: 'pie_chart_outline',
+      ruta: '/dashboard/reportes',
+    },
     ...OPCIONES_ADMINISTRATIVAS,
   ],
 
@@ -184,6 +199,13 @@ export const MENU_POR_ROL: Record<RolUsuario, readonly MenuItem[]> = {
       icono: 'inbox',
       ruta: '/tickets/recepcion',
     },
+    // 🛡️ [FASE 3.5 - VISTAS] Acceso directo a Reportes y SLAs para Administrador
+    {
+      id: 'admin-reportes',
+      titulo: 'Reportes y SLAs',
+      icono: 'pie_chart_outline',
+      ruta: '/dashboard/reportes',
+    },
     ...OPCIONES_ADMINISTRATIVAS,
   ],
 };
@@ -238,9 +260,7 @@ export function useNavigation() {
   });
 
   const etiquetaRolActual = computed(
-    () =>
-      OPCIONES_ROL_SIMULADOR.find((op) => op.valor === authStore.role)?.etiqueta ??
-      authStore.role,
+    () => authStore.usuario?.rolNombre || ETIQUETA_ROL[authStore.role] || authStore.role,
   );
 
   function esRutaActiva(ruta: string): boolean {
@@ -265,11 +285,6 @@ export function useNavigation() {
     }
   }
 
-  // TODO: Eliminar este manejador del simulador de rol antes de pasar a producción
-  function cambiarRolSimulado(nuevoRol: RolUsuario): void {
-    authStore.cambiarRolDesarrollo(nuevoRol);
-  }
-
   return {
     authStore,
     itemsMenu,
@@ -277,7 +292,6 @@ export function useNavigation() {
     etiquetaRolActual,
     esRutaActiva,
     irARuta,
-    cambiarRolSimulado,
   };
 }
 

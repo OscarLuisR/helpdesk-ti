@@ -12,6 +12,8 @@ export const ESTADOS_DISPONIBLES: readonly EstadoTicket[] = [
   'En Espera',
   'Resuelto - Por Verificar',
   'Cerrado',
+  'No Resuelto',
+  'Cancelado',
   'Reabierto',
 ];
 
@@ -37,6 +39,8 @@ export const ESTADO_CLASS: Record<EstadoTicket, string> = {
   'En Espera': 'estado-espera',
   'Resuelto - Por Verificar': 'estado-verificar',
   Cerrado: 'estado-cerrado',
+  'No Resuelto': 'estado-no-resuelto',
+  Cancelado: 'estado-cancelado',
   Reabierto: 'estado-reabierto',
 };
 

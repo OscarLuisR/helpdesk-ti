@@ -15,14 +15,14 @@
     >
       <q-card-section class="row items-center justify-between q-pb-sm dialog-header">
         <div>
-          <div class="text-subtitle1 text-weight-bold text-dark">
+          <div class="text-subtitle1 text-weight-bold text-ink">
             {{ tipoEditar ? 'Editar Tipo de Departamento' : 'Nuevo Tipo de Departamento' }}
           </div>
           <div class="text-caption muted">
             {{
               tipoEditar
-                ? 'Actualiza la denominación del tipo de departamento.'
-                : 'Registra una nueva clasificación organizacional para los departamentos.'
+                ? 'Actualiza el nombre y la descripción funcional del tipo de departamento.'
+                : 'Registra una nueva clasificación organizacional y su alcance operativo.'
             }}
           </div>
         </div>
@@ -58,6 +58,24 @@
                 :disable="guardando"
                 lazy-rules
                 :rules="[validarNombre]"
+              />
+            </div>
+
+            <div class="col-12">
+              <q-input
+                v-model="descripcion"
+                type="textarea"
+                autogrow
+                label="Descripción funcional"
+                placeholder="Ej. Áreas técnicas responsables de diagnosticar y resolver incidentes según catálogo y SLAs."
+                outlined
+                dense
+                counter
+                maxlength="250"
+                :input-style="{ minHeight: '72px' }"
+                :disable="guardando"
+                lazy-rules
+                :rules="[validarDescripcion]"
               />
             </div>
 
@@ -115,12 +133,14 @@ const emit = defineEmits<{
 }>();
 
 const nombre = ref('');
+const descripcion = ref('');
 
 watch(
   () => props.abierto,
   (abierto) => {
     if (!abierto) return;
     nombre.value = props.tipoEditar ? props.tipoEditar.nombre : '';
+    descripcion.value = props.tipoEditar ? props.tipoEditar.descripcion : '';
   },
 );
 
@@ -135,9 +155,16 @@ function validarNombre(valor: string): true | string {
   return true;
 }
 
+function validarDescripcion(valor: string): true | string {
+  const limpio = limpiarTexto(valor ?? '');
+  if (limpio.length > 250) return 'Máximo 250 caracteres';
+  return true;
+}
+
 function alGuardar(): void {
   emit('guardar', {
     nombre: limpiarTexto(nombre.value),
+    descripcion: limpiarTexto(descripcion.value),
   });
 }
 </script>
@@ -145,6 +172,6 @@ function alGuardar(): void {
 <style scoped lang="scss">
 .dialog-card {
   width: 100vw;
-  max-width: 520px;
+  max-width: 540px;
 }
 </style>

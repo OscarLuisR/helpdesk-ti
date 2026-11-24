@@ -1,36 +1,24 @@
 import { computed, onMounted, ref, watch } from 'vue';
-import { useQuasar, type QTableColumn, type QTableProps } from 'quasar';
+import { useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
+import { useDepartmentsStore, type Department } from '@/stores/useDepartmentsStore';
 import {
   useTipoDepartamentosStore,
   type TipoDepartamentoFormPayload,
   type TipoDepartamentoItem,
 } from '@/stores/useTipoDepartamentosStore';
 
-export const COLUMNAS_TIPO_DEPARTAMENTOS: QTableColumn<TipoDepartamentoItem>[] = [
-  { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true },
-  { name: 'nombre', label: 'Nombre del Tipo', field: 'nombre', align: 'left', sortable: true },
-  { name: 'acciones', label: 'Acciones', field: 'id', align: 'right' },
-];
+export const OPCIONES_FILAS_POR_PAGINA_TIPOS: number[] = [3, 6, 9, 12];
 
 export function useTipoDepartamentosView() {
   const $q = useQuasar();
+  const router = useRouter();
   const store = useTipoDepartamentosStore();
+  const departmentsStore = useDepartmentsStore();
 
   const busqueda = ref('');
-  const filasPorPagina = 6;
-  const paginacion = ref<NonNullable<QTableProps['pagination']>>({
-    sortBy: null,
-    descending: false,
-    page: 1,
-    rowsPerPage: filasPorPagina,
-  });
-
-  const paginaActual = computed({
-    get: () => paginacion.value.page ?? 1,
-    set: (val: number) => {
-      paginacion.value = { ...paginacion.value, page: val };
-    },
-  });
+  const filasPorPagina = ref<number>(6);
+  const paginaActual = ref<number>(1);
 
   const modalAbierto = ref(false);
   const guardando = ref(false);
@@ -39,26 +27,50 @@ export function useTipoDepartamentosView() {
 
   const cargando = computed(() => store.cargando);
 
+  const mapaDepartamentosPorTipo = computed(() => {
+    const mapa = new Map<number, Department[]>();
+    for (const depto of departmentsStore.departments) {
+      const lista = mapa.get(depto.id_tipo_departamento) ?? [];
+      lista.push(depto);
+      mapa.set(depto.id_tipo_departamento, lista);
+    }
+    return mapa;
+  });
+
+  function departamentosPorTipo(idTipo: number): Department[] {
+    return mapaDepartamentosPorTipo.value.get(idTipo) ?? [];
+  }
+
   const tiposFiltrados = computed(() => {
-    const q = busqueda.value.trim().toLowerCase();
+    const q = (busqueda.value ?? '').trim().toLowerCase();
     return store.tiposDepartamento.filter((t) => {
-      return !q || [String(t.id), t.nombre].some((txt) => txt.toLowerCase().includes(q));
+      if (!q) return true;
+      const deptos = departamentosPorTipo(t.id);
+      const camposDepto = deptos.flatMap((d) => [d.codigo, d.nombre]);
+      return [t.nombre, t.descripcion, ...camposDepto].some((txt) =>
+        txt.toLowerCase().includes(q),
+      );
     });
   });
 
   const totalPaginas = computed(() =>
-    Math.max(1, Math.ceil(tiposFiltrados.value.length / filasPorPagina)),
+    Math.max(1, Math.ceil(tiposFiltrados.value.length / filasPorPagina.value)),
   );
+
+  const tiposPaginados = computed(() => {
+    const inicio = (paginaActual.value - 1) * filasPorPagina.value;
+    return tiposFiltrados.value.slice(inicio, inicio + filasPorPagina.value);
+  });
 
   const textoMostrando = computed(() => {
     const total = tiposFiltrados.value.length;
-    if (total === 0) return '0 tipos de departamento';
-    const inicio = (paginaActual.value - 1) * filasPorPagina + 1;
-    const fin = Math.min(inicio + filasPorPagina - 1, total);
-    return `Mostrando ${inicio}-${fin} de ${total} tipos de departamento`;
+    if (total === 0) return 'Mostrando 0 de 0 tipos de departamento';
+    const inicio = (paginaActual.value - 1) * filasPorPagina.value + 1;
+    const fin = Math.min(paginaActual.value * filasPorPagina.value, total);
+    return `Mostrando ${inicio}–${fin} de ${total} tipos de departamento`;
   });
 
-  watch(busqueda, () => {
+  watch([busqueda, filasPorPagina], () => {
     paginaActual.value = 1;
   });
 
@@ -70,7 +82,10 @@ export function useTipoDepartamentosView() {
 
   async function recargarTipos(): Promise<void> {
     try {
-      await store.cargarTiposDepartamento();
+      await Promise.all([
+        store.cargarTiposDepartamento(),
+        departmentsStore.cargarDepartamentos(),
+      ]);
     } catch (err: unknown) {
       $q.notify({
         type: 'negative',
@@ -95,6 +110,14 @@ export function useTipoDepartamentosView() {
     tipoEditando.value = { ...tipo };
     errorFormulario.value = null;
     modalAbierto.value = true;
+  }
+
+  function irADepartamentos(idTipo: number, codigoDepto?: string): void {
+    const query: Record<string, string> = { tipo: String(idTipo) };
+    if (codigoDepto) {
+      query.q = codigoDepto;
+    }
+    void router.push({ path: '/admin/departamentos', query });
   }
 
   async function guardarTipoDepartamento(
@@ -136,15 +159,18 @@ export function useTipoDepartamentosView() {
   return {
     cargando,
     busqueda,
-    paginacion,
+    filasPorPagina,
     paginaActual,
     totalPaginas,
     tiposFiltrados,
+    tiposPaginados,
     textoMostrando,
     modalAbierto,
     guardando,
     errorFormulario,
     tipoEditando,
+    departamentosPorTipo,
+    irADepartamentos,
     recargarTipos,
     abrirModalCrear,
     abrirModalEditar,

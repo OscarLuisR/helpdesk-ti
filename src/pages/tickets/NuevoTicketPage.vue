@@ -214,7 +214,7 @@
                 rows="5"
                 maxlength="2000"
                 counter
-                placeholder="Describe el síntoma reportado, equipo/ubicación y mensajes de error observados..."
+                placeholder="Describe el síntoma reportado, ubicación y mensajes de error observados..."
                 :rules="[
                   (v) => (v && v.trim().length >= 10) || 'Ingresa al menos 10 caracteres.',
                   (v) => (v && v.trim().length <= 2000) || 'Máximo 2000 caracteres.',
@@ -222,8 +222,84 @@
               />
             </div>
 
+            <!-- 🛡️ [FASE 3.3 - TICKETS] Switch de Cierre Directo Nivel 1 en llamada inicial -->
+            <div class="n1-panel q-pa-md">
+              <div class="row items-center justify-between q-gutter-y-xs">
+                <div>
+                  <q-toggle
+                    v-model="form.cierre_directo_n1"
+                    color="positive"
+                    label="Resuelto en Nivel 1 (Cierre Directo)"
+                    class="text-weight-bold text-dark"
+                    @update:model-value="alAlternarCierreDirectoN1"
+                  />
+                  <div class="text-caption muted q-pl-sm">
+                    Activa esta opción si el caso se resolvió en la misma llamada inicial. El ticket se creará directamente en estado <strong>Cerrado</strong>.
+                  </div>
+                </div>
+                <span v-if="form.cierre_directo_n1" class="chip ok">Cierre Atómico N1</span>
+              </div>
+
+              <div v-if="form.cierre_directo_n1" class="q-mt-md q-gutter-y-sm">
+                <div>
+                  <label class="field-label">Causa Raíz *</label>
+                  <q-input
+                    v-model="form.causa_raiz"
+                    outlined
+                    dense
+                    type="textarea"
+                    rows="2"
+                    maxlength="2000"
+                    counter
+                    placeholder="Ej. Contraseña bloqueada por intentos fallidos o cable de video desconectado."
+                    :rules="[
+                      (v) =>
+                        !form.cierre_directo_n1 ||
+                        (v && v.trim().length >= 5) ||
+                        'Ingresa la causa raíz (mín. 5 caracteres).',
+                    ]"
+                  />
+                </div>
+                <div>
+                  <label class="field-label">Solución Aplicada *</label>
+                  <q-input
+                    v-model="form.solucion_aplicada"
+                    outlined
+                    dense
+                    type="textarea"
+                    rows="3"
+                    maxlength="2000"
+                    counter
+                    placeholder="Ej. Se restableció contraseña en directorio activo y el usuario ingresó correctamente."
+                    :rules="[
+                      (v) =>
+                        !form.cierre_directo_n1 ||
+                        (v && v.trim().length >= 5) ||
+                        'Documenta la solución aplicada (mín. 5 caracteres).',
+                    ]"
+                  />
+                </div>
+                <div>
+                  <label class="field-label">Observación para bitácora (opcional)</label>
+                  <q-input
+                    v-model="form.comentario"
+                    outlined
+                    dense
+                    maxlength="1000"
+                    placeholder="Detalle adicional de la llamada (opcional)"
+                  />
+                </div>
+                <q-checkbox
+                  v-model="form.conformidad_usuario"
+                  dense
+                  color="positive"
+                  label="El solicitante confirmó conformidad durante la llamada"
+                />
+              </div>
+            </div>
+
             <!-- 🛡️ [FASE 3 - EVIDENCIAS EN APERTURA] Hasta 3 imágenes con validación de formato, peso y Magic Bytes -->
-            <div>
+            <div v-if="!form.cierre_directo_n1">
               <div class="row items-center justify-between q-mb-xs">
                 <label class="field-label q-mb-none">
                   Imágenes de Evidencia (Opcional · {{ imagenesAdjuntas.length }}/{{ maxImagenesPermitidas }})
@@ -349,9 +425,9 @@
                 type="submit"
                 unelevated
                 no-caps
-                color="primary"
-                icon="confirmation_number"
-                label="Registrar Ticket"
+                :color="form.cierre_directo_n1 ? 'positive' : 'primary'"
+                :icon="form.cierre_directo_n1 ? 'verified' : 'confirmation_number'"
+                :label="form.cierre_directo_n1 ? 'Registrar y Cerrar en Nivel 1' : 'Registrar Ticket'"
                 :loading="enviando || ticketStore.guardando"
                 :disable="validandoImagenes"
               />
@@ -386,10 +462,7 @@
             <div class="sla-row q-pa-sm">
               <div class="text-caption muted text-uppercase">Prioridad Calculada</div>
               <div class="q-mt-xs">
-                <span class="chip" :class="claseChipPrioridad(incidenciaSeleccionada.prioridad)">
-                  <span class="chip__dot" />
-                  {{ incidenciaSeleccionada.prioridad }}
-                </span>
+                <PrioridadBadge :prioridad="incidenciaSeleccionada.prioridad" />
               </div>
             </div>
 
@@ -530,8 +603,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useQuasar, type QForm } from 'quasar';
+import PrioridadBadge from '@/components/common/PrioridadBadge.vue';
 import BuscarSolicitanteDialog from '@/components/tickets/BuscarSolicitanteDialog.vue';
-import { claseChipPrioridad } from '@/composables/useTickets';
 import type { SolicitanteItem } from '@/models/types';
 import { formatearTelefonoMask, validarTelefonoUsuario } from '@/composables/useUsersView';
 import { useCatalogStore, type ServiceCatalog } from '@/stores/useCatalogStore';
@@ -574,6 +647,12 @@ const form = reactive({
   solicitante_telefono: '',
   id_catalogo: null as number | null,
   descripcion_incidencia: '',
+  // 🛡️ [FASE 3.3 - TICKETS] Campos para Cierre Directo Nivel 1
+  cierre_directo_n1: false,
+  causa_raiz: '',
+  solucion_aplicada: '',
+  conformidad_usuario: true,
+  comentario: '',
 });
 
 const buscadorSolicitanteAbierto = ref(false);
@@ -740,6 +819,7 @@ function alSoltarArchivos(ev: DragEvent): void {
 }
 
 function alPegarImagen(ev: ClipboardEvent): void {
+  if (form.cierre_directo_n1) return;
   const items = ev.clipboardData?.items;
   if (!items) return;
 
@@ -788,6 +868,18 @@ function alCambiarDepartamentoSolicitante(): void {
   }
 }
 
+function alAlternarCierreDirectoN1(activo: boolean): void {
+  if (activo && imagenesAdjuntas.value.length > 0) {
+    liberarPreviewsImagenes();
+    $q.notify({
+      type: 'info',
+      message: 'Las imágenes en espera se descartaron porque un ticket cerrado en Nivel 1 queda en estado terminal.',
+      position: 'top-right',
+      timeout: 3500,
+    });
+  }
+}
+
 function limpiarCamposTexto(): void {
   solicitanteOriginal.value = null;
   candidatoSolicitante.value = null;
@@ -798,6 +890,11 @@ function limpiarCamposTexto(): void {
   form.solicitante_telefono = '';
   form.id_catalogo = null;
   form.descripcion_incidencia = '';
+  form.cierre_directo_n1 = false;
+  form.causa_raiz = '';
+  form.solucion_aplicada = '';
+  form.conformidad_usuario = true;
+  form.comentario = '';
   errorFormulario.value = null;
   liberarPreviewsImagenes();
   void nextTick(() => formRef.value?.resetValidation());
@@ -854,6 +951,14 @@ async function enviarFormulario(): Promise<void> {
     errorFormulario.value =
       'Completa el departamento solicitante, nombre y teléfono de contacto, e incidencia del catálogo.';
     return;
+  }
+
+  if (form.cierre_directo_n1) {
+    if (form.causa_raiz.trim().length < 5 || form.solucion_aplicada.trim().length < 5) {
+      errorFormulario.value =
+        'Para el Cierre Directo Nivel 1 debes ingresar la causa raíz y la solución aplicada (mín. 5 caracteres cada una).';
+      return;
+    }
   }
 
   const nombreIngresado = form.solicitante_nombre.trim();
@@ -929,6 +1034,16 @@ async function ejecutarRegistroTicket(opciones: {
 
   try {
     // 1. Registrar el ticket principal con la acción elegida sobre public.solicitantes
+    const camposN1 = form.cierre_directo_n1
+      ? {
+          cierre_directo_n1: true,
+          causa_raiz: form.causa_raiz.trim(),
+          solucion_aplicada: form.solucion_aplicada.trim(),
+          conformidad_usuario: form.conformidad_usuario,
+          ...(form.comentario.trim() ? { comentario: form.comentario.trim() } : {}),
+        }
+      : {};
+
     const payloadTicket =
       opciones.modo === 'nuevo' || !opciones.idSolicitante
         ? {
@@ -937,6 +1052,7 @@ async function ejecutarRegistroTicket(opciones: {
             solicitante_telefono: telefonoArmado,
             id_catalogo: form.id_catalogo,
             descripcion_incidencia: form.descripcion_incidencia.trim(),
+            ...camposN1,
           }
         : {
             id_solicitante: opciones.idSolicitante,
@@ -947,33 +1063,37 @@ async function ejecutarRegistroTicket(opciones: {
             solicitante_telefono: telefonoArmado,
             id_catalogo: form.id_catalogo,
             descripcion_incidencia: form.descripcion_incidencia.trim(),
+            ...camposN1,
           };
 
     const creado = await ticketStore.crearTicket(payloadTicket);
 
     ultimoFolioCreado.value = creado.folio;
 
-    // 2. Subir secuencialmente las imágenes validadas (si hay) al endpoint seguro /:id/adjuntos
-    const totalImagenes = imagenesAdjuntas.value.length;
+    // 2. Subir secuencialmente las imágenes validadas (si hay y no es cierre directo N1)
+    const totalImagenes = form.cierre_directo_n1 ? 0 : imagenesAdjuntas.value.length;
     let exitosas = 0;
     const fallidas: Array<{ nombre: string; motivo: string }> = [];
 
-    for (const [idx, item] of imagenesAdjuntas.value.entries()) {
-      item.estado = 'subiendo';
-      textoProgresoSubida.value = `Subiendo imagen ${idx + 1} de ${totalImagenes}...`;
-      try {
-        await ticketStore.subirAdjunto(creado.id, item.file);
-        item.estado = 'subido';
-        exitosas += 1;
-      } catch (errImg: unknown) {
-        fallidas.push({
-          nombre: item.file.name,
-          motivo:
-            errImg instanceof Error ? errImg.message : 'Error inesperado al subir la imagen.',
-        });
+    if (!form.cierre_directo_n1) {
+      for (const [idx, item] of imagenesAdjuntas.value.entries()) {
+        item.estado = 'subiendo';
+        textoProgresoSubida.value = `Subiendo imagen ${idx + 1} de ${totalImagenes}...`;
+        try {
+          await ticketStore.subirAdjunto(creado.id, item.file);
+          item.estado = 'subido';
+          exitosas += 1;
+        } catch (errImg: unknown) {
+          fallidas.push({
+            nombre: item.file.name,
+            motivo:
+              errImg instanceof Error ? errImg.message : 'Error inesperado al subir la imagen.',
+          });
+        }
       }
     }
 
+    const fueCierreDirecto = form.cierre_directo_n1;
     // Limpiar el formulario tras crear el ticket para evitar envíos duplicados
     limpiarCamposTexto();
 
@@ -984,7 +1104,9 @@ async function ejecutarRegistroTicket(opciones: {
           : '';
       $q.notify({
         type: 'positive',
-        message: `Ticket ${creado.folio} registrado correctamente${detalleImg}.`,
+        message: fueCierreDirecto
+          ? `Ticket ${creado.folio} registrado y cerrado en Nivel 1 correctamente.`
+          : `Ticket ${creado.folio} registrado correctamente${detalleImg}.`,
         position: 'top-right',
         timeout: 4000,
       });
@@ -1069,6 +1191,12 @@ onMounted(async () => {
 .form-warning {
   background: var(--warning-soft);
   border: 1px solid var(--border-subtle);
+}
+
+.n1-panel {
+  background: var(--surface-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
 }
 
 .dropzone-evidencia {

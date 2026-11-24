@@ -1,4 +1,4 @@
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useQuasar, type QTableColumn, type QTableProps } from 'quasar';
 import { opcionesCambioEstado, useConfirmacion } from '@/composables/useConfirmacion';
 import {
@@ -7,13 +7,24 @@ import {
   type PrioridadItem,
 } from '@/stores/usePrioridadesStore';
 
+// 🛡️ [FASE 3 - UI SLAs] Anchos fijos proporcionales (100%) sin scroll horizontal + botones Opción A
 export const COLUMNAS_SLAS: QTableColumn<PrioridadItem>[] = [
-  { name: 'prioridad', label: 'Prioridad', field: 'nombre', align: 'left', sortable: true },
+  {
+    name: 'prioridad',
+    label: 'Prioridad',
+    field: 'nombre',
+    align: 'left',
+    sortable: true,
+    headerStyle: 'width: 11%',
+    style: 'width: 11%',
+  },
   {
     name: 'criterio',
     label: 'Criterio (Impacto × Urgencia)',
     field: (row) => row.descripcion_criterio ?? '',
     align: 'left',
+    headerStyle: 'width: 23%',
+    style: 'width: 23%',
   },
   {
     name: 'metaAsignacion',
@@ -21,6 +32,8 @@ export const COLUMNAS_SLAS: QTableColumn<PrioridadItem>[] = [
     field: 'tiempo_max_asignacion_minutos',
     align: 'left',
     sortable: true,
+    headerStyle: 'width: 14%',
+    style: 'width: 14%',
   },
   {
     name: 'metaResolucion',
@@ -28,6 +41,8 @@ export const COLUMNAS_SLAS: QTableColumn<PrioridadItem>[] = [
     field: 'tiempo_meta_resolucion_horas',
     align: 'left',
     sortable: true,
+    headerStyle: 'width: 14%',
+    style: 'width: 14%',
   },
   {
     name: 'suplencia',
@@ -35,10 +50,29 @@ export const COLUMNAS_SLAS: QTableColumn<PrioridadItem>[] = [
     field: 'activa_suplencia',
     align: 'left',
     sortable: true,
+    headerStyle: 'width: 19%',
+    style: 'width: 19%',
   },
-  { name: 'estado', label: 'Estado', field: 'estado', align: 'left', sortable: true },
-  { name: 'acciones', label: 'Acciones', field: 'id', align: 'right' },
+  {
+    name: 'estado',
+    label: 'Estado',
+    field: 'estado',
+    align: 'left',
+    sortable: true,
+    headerStyle: 'width: 9%',
+    style: 'width: 9%',
+  },
+  {
+    name: 'acciones',
+    label: 'Acciones',
+    field: 'id',
+    align: 'right',
+    headerStyle: 'width: 10%',
+    style: 'width: 10%',
+  },
 ];
+
+export const OPCIONES_FILAS_POR_PAGINA_SLAS = [3, 5, 10, 15, 20];
 
 export const OPCIONES_FILTRO_ESTADO: readonly string[] = ['Todos', 'Activo', 'Inactivo'];
 
@@ -82,7 +116,22 @@ export function useSlasCrud() {
     sortBy: null,
     descending: false,
     page: 1,
-    rowsPerPage: 0,
+    rowsPerPage: 5,
+  });
+
+  const filasPorPagina = computed<number>({
+    get: () => paginacion.value.rowsPerPage ?? 5,
+    set: (val: number) => {
+      const cantidad = Number(val) > 0 ? Number(val) : 5;
+      paginacion.value = { ...paginacion.value, rowsPerPage: cantidad, page: 1 };
+    },
+  });
+
+  const paginaActual = computed<number>({
+    get: () => paginacion.value.page ?? 1,
+    set: (val: number) => {
+      paginacion.value = { ...paginacion.value, page: val };
+    },
   });
 
   const modalAbierto = ref(false);
@@ -103,6 +152,30 @@ export function useSlasCrud() {
         );
       return matchEstado && matchTexto;
     });
+  });
+
+  const totalPaginas = computed(() => {
+    const porPagina = Math.max(1, filasPorPagina.value);
+    return Math.max(1, Math.ceil(slas.value.length / porPagina));
+  });
+
+  const textoMostrando = computed(() => {
+    const total = slas.value.length;
+    if (total === 0) return 'Mostrando 0 de 0 prioridades';
+    const porPagina = Math.max(1, filasPorPagina.value);
+    const inicio = (paginaActual.value - 1) * porPagina + 1;
+    const fin = Math.min(paginaActual.value * porPagina, total);
+    return `Mostrando ${inicio}–${fin} de ${total} prioridades`;
+  });
+
+  watch([busqueda, filtroEstado], () => {
+    paginaActual.value = 1;
+  });
+
+  watch(totalPaginas, (nuevoMax) => {
+    if (paginaActual.value > nuevoMax) {
+      paginaActual.value = nuevoMax;
+    }
   });
 
   onMounted(async () => {
@@ -191,7 +264,11 @@ export function useSlasCrud() {
     busqueda,
     filtroEstado,
     paginacion,
+    filasPorPagina,
+    paginaActual,
+    totalPaginas,
     slas,
+    textoMostrando,
     modalAbierto,
     guardando,
     errorFormulario,

@@ -1,4 +1,5 @@
 import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useQuasar, type QTableColumn, type QTableProps } from 'quasar';
 import { opcionesCambioEstado, useConfirmacion } from '@/composables/useConfirmacion';
 import {
@@ -12,27 +13,72 @@ import {
   type TipoDepartamentoItem,
 } from '@/stores/useTipoDepartamentosStore';
 
+// 🛡️ [FASE 3 - UI DEPARTAMENTOS] Anchos fijos (100%) para evitar scroll horizontal en escritorio y laptop 960px
 export const COLUMNAS_DEPARTAMENTOS: QTableColumn<Department>[] = [
-  { name: 'codigo', label: 'Código', field: 'codigo', align: 'left', sortable: true },
-  { name: 'nombre', label: 'Nombre', field: 'nombre', align: 'left', sortable: true },
+  {
+    name: 'codigo',
+    label: 'Código',
+    field: 'codigo',
+    align: 'left',
+    sortable: true,
+    style: 'width: 9%;',
+    headerStyle: 'width: 9%;',
+  },
+  {
+    name: 'nombre',
+    label: 'Nombre',
+    field: 'nombre',
+    align: 'left',
+    sortable: true,
+    style: 'width: 24%;',
+    headerStyle: 'width: 24%;',
+  },
   {
     name: 'responsable',
     label: 'Responsable',
     field: (row) => row.responsable ?? 'Sin asignar',
     align: 'left',
     sortable: true,
+    style: 'width: 18%;',
+    headerStyle: 'width: 18%;',
   },
-  { name: 'telefono', label: 'Teléfono', field: 'telefono', align: 'left' },
+  {
+    name: 'telefono',
+    label: 'Teléfono',
+    field: 'telefono',
+    align: 'left',
+    style: 'width: 13%;',
+    headerStyle: 'width: 13%;',
+  },
   {
     name: 'tipo',
     label: 'Tipo',
     field: 'tipo_departamento',
     align: 'left',
     sortable: true,
+    style: 'width: 15%;',
+    headerStyle: 'width: 15%;',
   },
-  { name: 'estado', label: 'Estado', field: 'estado', align: 'left', sortable: true },
-  { name: 'acciones', label: 'Acciones', field: 'id', align: 'right' },
+  {
+    name: 'estado',
+    label: 'Estado',
+    field: 'estado',
+    align: 'left',
+    sortable: true,
+    style: 'width: 10%;',
+    headerStyle: 'width: 10%;',
+  },
+  {
+    name: 'acciones',
+    label: 'Acciones',
+    field: 'id',
+    align: 'right',
+    style: 'width: 11%;',
+    headerStyle: 'width: 11%;',
+  },
 ];
+
+export const OPCIONES_FILAS_POR_PAGINA_DEPARTAMENTOS: number[] = [3, 5, 10, 15, 20];
 
 export const OPCIONES_FILTRO_ESTADO: readonly string[] = ['Todos', 'Activo', 'Inactivo'];
 
@@ -43,6 +89,8 @@ export interface OpcionFiltroTipo {
 
 export function useDepartmentsView() {
   const $q = useQuasar();
+  const route = useRoute();
+  const router = useRouter();
   const store = useDepartmentsStore();
   const tipoDepartamentosStore = useTipoDepartamentosStore();
   const {
@@ -56,12 +104,42 @@ export function useDepartmentsView() {
   const filtroTipo = ref<number | 'TODOS'>('TODOS');
   const filtroEstado = ref<string>('Todos');
 
-  const filasPorPagina = 6;
+  function aplicarQueryFiltros(): void {
+    const rawTipo = Array.isArray(route.query.tipo) ? route.query.tipo[0] : route.query.tipo;
+    if (rawTipo !== undefined && rawTipo !== null && rawTipo !== '') {
+      const idNum = Number(rawTipo);
+      if (Number.isInteger(idNum) && idNum > 0) {
+        filtroTipo.value = idNum;
+      }
+    }
+
+    const rawQ = Array.isArray(route.query.q) ? route.query.q[0] : route.query.q;
+    if (typeof rawQ === 'string' && rawQ.trim().length > 0) {
+      busqueda.value = rawQ.trim();
+    }
+  }
+
+  aplicarQueryFiltros();
+
+  watch(
+    () => [route.query.tipo, route.query.q],
+    () => {
+      aplicarQueryFiltros();
+    },
+  );
+
   const paginacion = ref<NonNullable<QTableProps['pagination']>>({
     sortBy: null,
     descending: false,
     page: 1,
-    rowsPerPage: filasPorPagina,
+    rowsPerPage: 5,
+  });
+
+  const filasPorPagina = computed({
+    get: () => paginacion.value.rowsPerPage ?? 5,
+    set: (val: number) => {
+      paginacion.value = { ...paginacion.value, rowsPerPage: val, page: 1 };
+    },
   });
 
   const paginaActual = computed({
@@ -89,6 +167,27 @@ export function useDepartmentsView() {
     })),
   ]);
 
+  const tipoFiltroActivo = computed<TipoDepartamentoItem | null>(() => {
+    if (filtroTipo.value === 'TODOS') return null;
+    return tipoDepartamentosStore.tiposDepartamento.find((t) => t.id === filtroTipo.value) ?? null;
+  });
+
+  function obtenerDescripcionTipo(idTipo: number): string {
+    return tipoDepartamentosStore.tiposDepartamento.find((t) => t.id === idTipo)?.descripcion ?? '';
+  }
+
+  function filtrarPorTipo(idTipo: number | 'TODOS'): void {
+    filtroTipo.value = idTipo;
+    if (idTipo === 'TODOS' && (route.query.tipo || route.query.q)) {
+      busqueda.value = '';
+      void router.replace({ path: '/admin/departamentos' });
+    }
+  }
+
+  function irATipoDepartamentos(): void {
+    void router.push('/admin/tipo-departamentos');
+  }
+
   const departamentosFiltrados = computed(() => {
     const q = (busqueda.value ?? '').trim().toLowerCase();
     return store.departments.filter((d) => {
@@ -114,15 +213,15 @@ export function useDepartmentsView() {
   });
 
   const totalPaginas = computed(() =>
-    Math.max(1, Math.ceil(departamentosFiltrados.value.length / filasPorPagina)),
+    Math.max(1, Math.ceil(departamentosFiltrados.value.length / filasPorPagina.value)),
   );
 
   const textoMostrando = computed(() => {
     const total = departamentosFiltrados.value.length;
-    if (total === 0) return '0 departamentos';
-    const inicio = (paginaActual.value - 1) * filasPorPagina + 1;
-    const fin = Math.min(inicio + filasPorPagina - 1, total);
-    return `Mostrando ${inicio}-${fin} de ${total} departamentos`;
+    if (total === 0) return 'Mostrando 0 de 0 departamentos';
+    const inicio = (paginaActual.value - 1) * filasPorPagina.value + 1;
+    const fin = Math.min(paginaActual.value * filasPorPagina.value, total);
+    return `Mostrando ${inicio}–${fin} de ${total} departamentos`;
   });
 
   watch([busqueda, filtroTipo, filtroEstado], () => {
@@ -212,10 +311,15 @@ export function useDepartmentsView() {
     cargando,
     tiposDepartamento,
     opcionesFiltroTipo,
+    tipoFiltroActivo,
+    obtenerDescripcionTipo,
+    filtrarPorTipo,
+    irATipoDepartamentos,
     busqueda,
     filtroTipo,
     filtroEstado,
     paginacion,
+    filasPorPagina,
     paginaActual,
     totalPaginas,
     departamentosFiltrados,

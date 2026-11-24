@@ -82,6 +82,15 @@ const routes: RouteRecordRaw[] = [
           modoBandeja: 'gerencia',
         },
       },
+      // 🛡️ [FASE 3.5 - VISTAS] Balanceo de Cargas para Gerente de Área
+      {
+        path: '/gerencia/asignacion',
+        component: () => import('@/pages/tickets/BalanceoCargasPage.vue'),
+        meta: {
+          requiresAuth: true,
+          roles: ['GERENTE_AREA'],
+        },
+      },
       {
         path: '/tecnico/mis-tickets',
         component: () => import('@/pages/tickets/BandejaTicketsPage.vue'),
@@ -89,6 +98,24 @@ const routes: RouteRecordRaw[] = [
           requiresAuth: true,
           roles: ['TECNICO'],
           modoBandeja: 'tecnico',
+        },
+      },
+      // 🛡️ [FASE 3.5 - VISTAS] Base de Soluciones (sin PII) para Técnico y roles supervisores
+      {
+        path: '/tecnico/historial',
+        component: () => import('@/pages/tickets/BaseSolucionesPage.vue'),
+        meta: {
+          requiresAuth: true,
+          roles: ['TECNICO', 'GERENTE_AREA', 'MESA_TECNICA', 'DIRECTOR', 'ADMINISTRADOR'],
+        },
+      },
+      // 🛡️ [FASE 3.5 - VISTAS] Reportes y SLAs con motor SQL de relojes reales
+      {
+        path: '/dashboard/reportes',
+        component: () => import('@/pages/tickets/ReportesSlaPage.vue'),
+        meta: {
+          requiresAuth: true,
+          roles: ['DIRECTOR', 'ADMINISTRADOR', 'MESA_TECNICA'],
         },
       },
       {

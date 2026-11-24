@@ -1,10 +1,14 @@
 import { defineStore } from 'pinia';
 import type { RespuestaApi } from '@/models/auth';
 import type {
+  BaseSolucionesFiltrosQuery,
+  BaseSolucionItem,
   CreateTicketComentarioPayload,
   CreateTicketPayload,
   CreateTicketResult,
   EstadoTicket,
+  MetricasFiltrosQuery,
+  MetricasTicketsResponse,
   PatchTicketEstadoPayload,
   PatchTicketEstadoResult,
   SolicitanteItem,
@@ -14,6 +18,8 @@ import type {
   TicketBitacoraItem,
   TicketComentarioItem,
   TicketFiltrosQuery,
+  TransferirTicketPayload,
+  TransferirTicketResult,
 } from '@/models/types';
 import { api } from '@/services/api';
 import { extraerMensajeErrorApi } from '@/stores/useRolesStore';
@@ -113,6 +119,29 @@ export const useTicketStore = defineStore('ticket', {
       } catch (err: unknown) {
         throw new Error(
           extraerMensajeErrorApi(err, 'No fue posible actualizar el estado del ticket.'),
+          { cause: err },
+        );
+      } finally {
+        this.guardando = false;
+      }
+    },
+
+    // 🛡️ [FASE 3.3 - TICKETS] Transferencia de ticket hacia otra Sub-Gerencia TI
+    async transferirTicket(
+      idTicket: number,
+      payload: TransferirTicketPayload,
+    ): Promise<TransferirTicketResult> {
+      this.guardando = true;
+      try {
+        const { data: respuesta } = await api.patch<RespuestaApi<TransferirTicketResult>>(
+          `/tickets/${idTicket}/transferir`,
+          payload,
+        );
+        await this.cargarTickets();
+        return respuesta.data;
+      } catch (err: unknown) {
+        throw new Error(
+          extraerMensajeErrorApi(err, 'No fue posible transferir el ticket de área TI.'),
           { cause: err },
         );
       } finally {
@@ -276,6 +305,46 @@ export const useTicketStore = defineStore('ticket', {
         throw new Error(extraerMensajeErrorApi(err, 'No fue posible descargar el archivo.'), {
           cause: err,
         });
+      }
+    },
+
+    // 🛡️ [FASE 3.5 - VISTAS] Consulta del motor SQL de relojes reales y KPIs (GET /api/tickets/metricas)
+    async cargarMetricas(filtros: MetricasFiltrosQuery = {}): Promise<MetricasTicketsResponse> {
+      try {
+        const params = Object.fromEntries(
+          Object.entries(filtros).filter(([, valor]) => valor !== undefined && valor !== ''),
+        );
+        const { data: respuesta } = await api.get<RespuestaApi<MetricasTicketsResponse>>(
+          '/tickets/metricas',
+          { params },
+        );
+        return respuesta.data;
+      } catch (err: unknown) {
+        throw new Error(
+          extraerMensajeErrorApi(err, 'No fue posible cargar las métricas reales de SLA.'),
+          { cause: err },
+        );
+      }
+    },
+
+    // 🛡️ [FASE 3.5 - VISTAS] Consulta acotada (sin PII) de Base de Soluciones (GET /api/tickets/base-soluciones)
+    async cargarBaseSoluciones(
+      filtros: BaseSolucionesFiltrosQuery = {},
+    ): Promise<BaseSolucionItem[]> {
+      try {
+        const params = Object.fromEntries(
+          Object.entries(filtros).filter(([, valor]) => valor !== undefined && valor !== ''),
+        );
+        const { data: respuesta } = await api.get<RespuestaApi<BaseSolucionItem[]>>(
+          '/tickets/base-soluciones',
+          { params },
+        );
+        return Array.isArray(respuesta.data) ? respuesta.data : [];
+      } catch (err: unknown) {
+        throw new Error(
+          extraerMensajeErrorApi(err, 'No fue posible consultar la Base de Soluciones.'),
+          { cause: err },
+        );
       }
     },
   },

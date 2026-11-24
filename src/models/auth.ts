@@ -1,4 +1,4 @@
-import type { AreaDestino, RolUsuario } from './types';
+import type { RolUsuario } from './types';
 
 export interface UsuarioSesion {
   id: string;
@@ -11,8 +11,6 @@ export interface UsuarioSesion {
   telefono?: string;
   /** Indica si el usuario debe cambiar obligatoriamente su contraseña temporal ("123456"). */
   is_new_user?: boolean;
-  /** Sub-área asignada cuando el usuario pertenece a una especialidad de TI. */
-  area?: AreaDestino;
   // 🛡️ [FASE 2.3 - TICKETS] ID del departamento real del usuario enviado en el JWT
   id_departamento?: number;
 }
@@ -58,17 +56,3 @@ export interface CredencialesLogin {
   username: string;
   password: string;
 }
-
-export interface OpcionRolSimulador {
-  valor: RolUsuario;
-  etiqueta: string;
-}
-
-export const OPCIONES_ROL_SIMULADOR: readonly OpcionRolSimulador[] = [
-  { valor: 'USUARIO', etiqueta: 'Usuario (Solicitante)' },
-  { valor: 'MESA_TECNICA', etiqueta: 'Mesa Técnica' },
-  { valor: 'GERENTE_AREA', etiqueta: 'Gerente de Área' },
-  { valor: 'TECNICO', etiqueta: 'Técnico' },
-  { valor: 'DIRECTOR', etiqueta: 'Director' },
-  { valor: 'ADMINISTRADOR', etiqueta: 'Administrador' },
-];

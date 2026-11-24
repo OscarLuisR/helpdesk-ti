@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md q-pa-sm-lg dept-page">
     <!-- Encabezado de página -->
-    <div class="row items-end justify-between q-gutter-y-md q-mb-lg">
+    <div class="row items-end justify-between q-gutter-y-sm q-mb-lg">
       <div class="col-12 col-sm-auto">
         <span class="page-eyebrow">
           <q-icon name="apartment" size="14px" />
@@ -24,27 +24,6 @@
           :class="{ 'full-width': $q.screen.xs }"
           @click="abrirModalCrear"
         />
-      </div>
-    </div>
-
-    <!-- Bento Grid de métricas estructurales -->
-    <div class="bento-grid q-mb-lg">
-      <div
-        v-for="metrica in metricasBento"
-        :key="metrica.id"
-        class="modern-card modern-card--interactive bento-card q-pa-md"
-      >
-        <div class="row items-center justify-between no-wrap q-mb-sm">
-          <span class="bento-card__label">{{ metrica.etiqueta }}</span>
-          <span class="soft-badge" :class="metrica.badgeClase">
-            <span class="soft-badge__dot" />
-            {{ metrica.tag }}
-          </span>
-        </div>
-        <div class="row items-baseline justify-between no-wrap">
-          <span class="bento-card__value tabular-nums">{{ metrica.valor }}</span>
-          <span class="bento-card__hint">{{ metrica.detalle }}</span>
-        </div>
       </div>
     </div>
 
@@ -89,6 +68,29 @@
             />
           </div>
         </div>
+
+        <!-- Contexto descriptivo cuando hay un Tipo de Departamento filtrado -->
+        <div v-if="tipoFiltroActivo" class="tipo-filtro-banner q-mt-sm">
+          <div class="row items-center q-gutter-x-sm q-gutter-y-xs min-w-0">
+            <TipoDepartamentoBadge
+              :nombre="tipoFiltroActivo.nombre"
+              :id-tipo="tipoFiltroActivo.id"
+            />
+            <span class="text-caption tipo-filtro-banner__desc">
+              {{ tipoFiltroActivo.descripcion || 'Sin descripción registrada para este tipo.' }}
+            </span>
+          </div>
+          <q-btn
+            flat
+            dense
+            no-caps
+            color="primary"
+            label="Ver todos"
+            size="sm"
+            class="shrink-0"
+            @click="filtrarPorTipo('TODOS')"
+          />
+        </div>
       </div>
 
       <q-table
@@ -96,85 +98,93 @@
         v-model:pagination="paginacion"
         :rows="departamentosFiltrados"
         :columns="COLUMNAS_DEPARTAMENTOS"
+        :rows-per-page-options="OPCIONES_FILAS_POR_PAGINA_DEPARTAMENTOS"
         row-key="id"
         :loading="cargando"
         :grid="$q.screen.lt.md"
         hide-pagination
         no-data-label="No se encontraron departamentos con los filtros seleccionados"
-        class="modern-table"
+        class="modern-table tabla-departamentos"
       >
         <!-- Vista móvil en tarjetas Bento -->
         <template #item="props">
           <div class="col-12 col-sm-6 q-pa-xs">
-            <q-card flat bordered class="modern-card q-pa-md full-height">
-              <div class="row items-center justify-between no-wrap q-mb-sm">
-                <span class="soft-badge soft-badge--slate">{{ props.row.codigo }}</span>
-                <span
-                  class="soft-badge"
-                  :class="props.row.estado === 'Activo' ? 'soft-badge--ok' : 'soft-badge--bad'"
-                >
-                  <span class="soft-badge__dot" />
-                  {{ props.row.estado }}
-                </span>
-              </div>
-
-              <div class="dept-name q-mb-xs">{{ props.row.nombre }}</div>
-              <div v-if="props.row.ubicacion" class="text-caption muted q-mb-sm">
-                {{ props.row.ubicacion }}
-              </div>
-
-              <div class="row items-center justify-between q-mt-sm q-pt-sm mobile-card-divider">
-                <div class="row items-center no-wrap">
-                  <template v-if="props.row.responsable">
-                    <q-avatar
-                      size="26px"
-                      class="q-mr-xs avatar-iniciales"
-                      :style="avatarSolicitanteStyle(props.row.responsable)"
-                    >
-                      {{ inicialesSolicitante(props.row.responsable) }}
-                    </q-avatar>
-                    <span class="text-caption dept-resp">{{ props.row.responsable }}</span>
-                  </template>
-                  <span v-else class="text-caption muted">Sin responsable asignado</span>
+            <q-card flat bordered class="modern-card q-pa-md full-height column justify-between">
+              <div>
+                <div class="row items-center justify-between no-wrap q-gutter-x-sm q-mb-sm">
+                  <span class="chip brand chip-codigo tabular-nums">{{ props.row.codigo }}</span>
+                  <span
+                    class="soft-badge shrink-0"
+                    :class="props.row.estado === 'Activo' ? 'soft-badge--ok' : 'soft-badge--bad'"
+                  >
+                    <span class="soft-badge__dot" />
+                    {{ props.row.estado }}
+                  </span>
                 </div>
 
-                <div class="row items-center q-gutter-xs">
-                  <q-btn
-                    flat
-                    unelevated
-                    no-caps
-                    round
-                    dense
-                    icon="edit"
-                    size="sm"
-                    class="row-action-btn"
-                    @click="abrirModalEditar(props.row)"
-                  />
-                  <q-btn
-                    flat
-                    unelevated
-                    no-caps
-                    round
-                    dense
-                    :icon="props.row.estado === 'Activo' ? 'block' : 'check_circle_outline'"
-                    size="sm"
-                    :class="props.row.estado === 'Activo' ? 'row-action-btn' : 'row-action-btn--ok'"
-                    @click="alternarEstado(props.row)"
+                <div class="dept-name q-mb-xs">{{ props.row.nombre }}</div>
+                <div v-if="props.row.ubicacion" class="text-caption muted q-mb-sm">
+                  {{ props.row.ubicacion }}
+                </div>
+
+                <div class="row items-center justify-between q-gutter-xs q-mt-sm q-mb-sm">
+                  <div class="row items-center no-wrap min-w-0">
+                    <template v-if="props.row.responsable">
+                      <q-avatar
+                        size="26px"
+                        class="q-mr-xs avatar-iniciales shrink-0"
+                        :style="avatarSolicitanteStyle(props.row.responsable)"
+                      >
+                        {{ inicialesSolicitante(props.row.responsable) }}
+                      </q-avatar>
+                      <span class="text-caption dept-resp">{{ props.row.responsable }}</span>
+                    </template>
+                    <span v-else class="text-caption muted">Sin responsable asignado</span>
+                  </div>
+                  <TipoDepartamentoBadge
+                    :nombre="props.row.tipo_departamento"
+                    :id-tipo="props.row.id_tipo_departamento"
+                    :descripcion="obtenerDescripcionTipo(props.row.id_tipo_departamento)"
+                    clickable
+                    class="shrink-0"
+                    @click="filtrarPorTipo(props.row.id_tipo_departamento)"
                   />
                 </div>
               </div>
 
-              <div class="row items-center justify-between q-mt-sm">
-                <span class="text-caption muted tabular-nums">
+              <div class="row items-center justify-between q-pt-sm mobile-card-divider">
+                <span class="text-caption muted tabular-nums telefono-lineal">
                   <q-icon name="phone" size="14px" class="q-mr-xs" />
                   {{ props.row.telefono }}
                 </span>
-                <span
-                  class="soft-badge"
-                  :class="esDepartamentoTI(props.row) ? 'soft-badge--accent' : 'soft-badge--neutral'"
-                >
-                  {{ props.row.tipo_departamento }}
-                </span>
+                <div class="row items-center q-gutter-xs no-wrap">
+                  <q-btn
+                    outline
+                    unelevated
+                    dense
+                    color="secondary"
+                    icon="edit"
+                    size="sm"
+                    aria-label="Editar departamento"
+                    class="btn-accion-icono"
+                    @click="abrirModalEditar(props.row)"
+                  >
+                    <q-tooltip>Editar departamento</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    outline
+                    unelevated
+                    dense
+                    :color="props.row.estado === 'Activo' ? 'negative' : 'positive'"
+                    :icon="props.row.estado === 'Activo' ? 'block' : 'check_circle_outline'"
+                    size="sm"
+                    :aria-label="props.row.estado === 'Activo' ? 'Desactivar departamento' : 'Activar departamento'"
+                    class="btn-accion-icono"
+                    @click="alternarEstado(props.row)"
+                  >
+                    <q-tooltip>{{ props.row.estado === 'Activo' ? 'Desactivar' : 'Activar' }}</q-tooltip>
+                  </q-btn>
+                </div>
               </div>
             </q-card>
           </div>
@@ -182,17 +192,17 @@
 
         <template #body-cell-codigo="props">
           <q-td :props="props">
-            <span class="soft-badge soft-badge--slate tabular-nums">
+            <span class="chip brand chip-codigo tabular-nums">
               {{ props.row.codigo }}
             </span>
           </q-td>
         </template>
 
         <template #body-cell-nombre="props">
-          <q-td :props="props">
+          <q-td :props="props" class="celda-wrap">
             <div class="column">
               <span class="dept-name">{{ props.row.nombre }}</span>
-              <span v-if="props.row.ubicacion" class="text-caption muted">
+              <span v-if="props.row.ubicacion" class="text-caption muted q-mt-xs">
                 {{ props.row.ubicacion }}
               </span>
             </div>
@@ -200,16 +210,16 @@
         </template>
 
         <template #body-cell-responsable="props">
-          <q-td :props="props">
+          <q-td :props="props" class="celda-wrap">
             <div v-if="props.row.responsable" class="row items-center no-wrap">
               <q-avatar
                 size="28px"
-                class="q-mr-sm avatar-iniciales"
+                class="q-mr-sm avatar-iniciales shrink-0"
                 :style="avatarSolicitanteStyle(props.row.responsable)"
               >
                 {{ inicialesSolicitante(props.row.responsable) }}
               </q-avatar>
-              <span class="dept-resp">{{ props.row.responsable }}</span>
+              <span class="dept-resp min-w-0 col">{{ props.row.responsable }}</span>
             </div>
             <span v-else class="text-caption muted">Sin asignar</span>
           </q-td>
@@ -217,7 +227,7 @@
 
         <template #body-cell-telefono="props">
           <q-td :props="props">
-            <span class="text-caption dept-phone tabular-nums">
+            <span class="text-caption dept-phone tabular-nums telefono-lineal">
               <q-icon name="phone" size="14px" class="filter-icon q-mr-xs" />
               {{ props.row.telefono }}
             </span>
@@ -226,12 +236,13 @@
 
         <template #body-cell-tipo="props">
           <q-td :props="props">
-            <span
-              class="soft-badge"
-              :class="esDepartamentoTI(props.row) ? 'soft-badge--accent' : 'soft-badge--neutral'"
-            >
-              {{ props.row.tipo_departamento }}
-            </span>
+            <TipoDepartamentoBadge
+              :nombre="props.row.tipo_departamento"
+              :id-tipo="props.row.id_tipo_departamento"
+              :descripcion="obtenerDescripcionTipo(props.row.id_tipo_departamento)"
+              clickable
+              @click="filtrarPorTipo(props.row.id_tipo_departamento)"
+            />
           </q-td>
         </template>
 
@@ -248,32 +259,30 @@
         </template>
 
         <template #body-cell-acciones="props">
-          <q-td :props="props" auto-width>
+          <q-td :props="props" class="text-right">
             <div class="row items-center justify-end no-wrap q-gutter-xs">
               <q-btn
-                flat
+                outline
                 unelevated
-                no-caps
-                round
                 dense
+                color="secondary"
                 icon="edit"
                 size="sm"
-                class="row-action-btn"
+                class="btn-accion-icono"
                 aria-label="Editar departamento"
                 @click="abrirModalEditar(props.row)"
               >
                 <q-tooltip>Editar departamento</q-tooltip>
               </q-btn>
               <q-btn
-                flat
+                outline
                 unelevated
-                no-caps
-                round
                 dense
-                :icon="props.row.estado === 'Activo' ? 'delete_outline' : 'restore'"
+                :color="props.row.estado === 'Activo' ? 'negative' : 'positive'"
+                :icon="props.row.estado === 'Activo' ? 'block' : 'check_circle_outline'"
                 size="sm"
-                :class="props.row.estado === 'Activo' ? 'row-action-btn' : 'row-action-btn--ok'"
-                :aria-label="props.row.estado === 'Activo' ? 'Desactivar' : 'Activar'"
+                class="btn-accion-icono"
+                :aria-label="props.row.estado === 'Activo' ? 'Desactivar departamento' : 'Activar departamento'"
                 @click="alternarEstado(props.row)"
               >
                 <q-tooltip>{{ props.row.estado === 'Activo' ? 'Desactivar' : 'Activar' }}</q-tooltip>
@@ -283,18 +292,39 @@
         </template>
       </q-table>
 
-      <div class="row items-center justify-between tabla-footer q-col-gutter-sm">
-        <q-pagination
-          v-model="paginaActual"
-          :max="totalPaginas"
-          :max-pages="$q.screen.lt.sm ? 3 : 5"
-          direction-links
-          active-design="unelevated"
-          active-color="primary"
-          color="grey-7"
-          size="sm"
-        />
-        <span class="text-caption muted tabular-nums">{{ textoMostrando }}</span>
+      <!-- 🛡️ [FASE 3 - UI DEPARTAMENTOS] Pie de paginación en 3 zonas consistente con Configuraciones -->
+      <div class="tabla-footer-3zonas">
+        <div class="footer-zona-izq row items-center q-gutter-x-xs">
+          <span class="text-caption muted">Mostrar</span>
+          <q-select
+            v-model="filasPorPagina"
+            :options="OPCIONES_FILAS_POR_PAGINA_DEPARTAMENTOS"
+            dense
+            outlined
+            options-dense
+            hide-bottom-space
+            aria-label="Registros por página"
+            class="select-filas-pagina"
+          />
+          <span class="text-caption muted">por página</span>
+        </div>
+
+        <div class="footer-zona-centro">
+          <q-pagination
+            v-model="paginaActual"
+            :max="totalPaginas"
+            :max-pages="$q.screen.lt.sm ? 3 : 5"
+            direction-links
+            active-design="unelevated"
+            active-color="primary"
+            color="grey-7"
+            size="sm"
+          />
+        </div>
+
+        <div class="footer-zona-der text-caption muted tabular-nums">
+          {{ textoMostrando }}
+        </div>
       </div>
     </q-card>
 
@@ -315,29 +345,32 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import { useQuasar } from 'quasar';
 import DepartmentFormDialog from '@/components/admin/DepartmentFormDialog.vue';
 import ConfirmarAccionDialog from '@/components/common/ConfirmarAccionDialog.vue';
+import TipoDepartamentoBadge from '@/components/common/TipoDepartamentoBadge.vue';
 import {
   COLUMNAS_DEPARTAMENTOS,
+  OPCIONES_FILAS_POR_PAGINA_DEPARTAMENTOS,
   OPCIONES_FILTRO_ESTADO,
   useDepartmentsView,
 } from '@/composables/useDepartmentsView';
 import { avatarSolicitanteStyle, inicialesSolicitante } from '@/composables/useTickets';
-import { esDepartamentoTI, useDepartmentsStore } from '@/stores/useDepartmentsStore';
 
 const $q = useQuasar();
-const departmentsStore = useDepartmentsStore();
 
 const {
   cargando,
   tiposDepartamento,
   opcionesFiltroTipo,
+  tipoFiltroActivo,
+  obtenerDescripcionTipo,
+  filtrarPorTipo,
   busqueda,
   filtroTipo,
   filtroEstado,
   paginacion,
+  filasPorPagina,
   paginaActual,
   totalPaginas,
   departamentosFiltrados,
@@ -354,51 +387,6 @@ const {
   guardarDepartamento,
   alternarEstado,
 } = useDepartmentsView();
-
-const metricasBento = computed(() => {
-  const todos = departmentsStore.departments;
-  const total = todos.length;
-  const activos = todos.filter((d) => d.is_activo).length;
-  const inactivos = total - activos;
-  const areasTi = todos.filter((d) => esDepartamentoTI(d)).length;
-  const conResponsable = todos.filter((d) => Boolean(d.responsable)).length;
-  const pctActivos = total > 0 ? Math.round((activos / total) * 100) : 0;
-
-  return [
-    {
-      id: 'total',
-      etiqueta: 'Total registrados',
-      valor: total,
-      tag: 'Estructura',
-      badgeClase: 'soft-badge--primary',
-      detalle: `${tiposDepartamento.value.length} tipos configurados`,
-    },
-    {
-      id: 'activos',
-      etiqueta: 'Departamentos activos',
-      valor: activos,
-      tag: `${pctActivos}%`,
-      badgeClase: 'soft-badge--ok',
-      detalle: `${inactivos} inactivo${inactivos === 1 ? '' : 's'}`,
-    },
-    {
-      id: 'ti',
-      etiqueta: 'Áreas técnicas TI',
-      valor: areasTi,
-      tag: 'Mesa & Soporte',
-      badgeClase: 'soft-badge--accent',
-      detalle: `${total - areasTi} áreas solicitantes`,
-    },
-    {
-      id: 'responsable',
-      etiqueta: 'Con responsable',
-      valor: conResponsable,
-      tag: 'Liderazgo',
-      badgeClase: 'soft-badge--amber',
-      detalle: `${total - conResponsable} sin asignar`,
-    },
-  ];
-});
 </script>
 
 <style scoped lang="scss">
@@ -411,29 +399,25 @@ const metricasBento = computed(() => {
   padding: 8px 16px;
 }
 
-.bento-card {
+.chip-codigo {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.tipo-filtro-banner {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: space-between;
-  min-height: 98px;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
 
-  &__label {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--text-muted);
-  }
-
-  &__value {
-    font-size: 1.75rem;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    line-height: 1.1;
-    color: var(--text-primary);
-  }
-
-  &__hint {
-    font-size: 0.75rem;
-    color: var(--text-muted);
+  &__desc {
+    color: var(--text-secondary);
+    line-height: 1.4;
   }
 }
 
@@ -452,12 +436,13 @@ const metricasBento = computed(() => {
 .dept-name {
   font-weight: 600;
   color: var(--text-primary);
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 .dept-resp {
   font-weight: 500;
   color: var(--text-primary);
+  line-height: 1.3;
 }
 
 .dept-phone {
@@ -473,20 +458,106 @@ const metricasBento = computed(() => {
   border-top: 1px solid var(--border-subtle);
 }
 
-.row-action-btn {
-  color: var(--text-muted);
-
-  &:hover {
-    color: var(--text-primary);
-    background: var(--surface-subtle);
+// 🛡️ [FASE 3 - UI DEPARTAMENTOS] Tabla fija sin scroll horizontal y celdas adaptables
+.tabla-departamentos {
+  :deep(.q-table__middle) {
+    overflow-x: hidden;
   }
 
-  &--ok {
-    color: var(--success);
+  :deep(table.q-table) {
+    table-layout: fixed;
+    width: 100%;
+  }
 
-    &:hover {
-      background: rgba(21, 128, 61, 0.12);
-    }
+  :deep(thead tr th) {
+    white-space: normal;
+    line-height: 1.25;
+    padding: 11px 10px;
+  }
+
+  :deep(tbody td) {
+    height: auto;
+    white-space: normal;
+    word-break: break-word;
+    padding: 12px 10px;
+  }
+}
+
+.celda-wrap {
+  white-space: normal !important;
+  word-break: break-word;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+.shrink-0 {
+  flex-shrink: 0;
+}
+
+.telefono-lineal {
+  white-space: nowrap;
+}
+
+.btn-accion-icono {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+}
+
+// Pie de tabla de 3 zonas consistente con Configuraciones, Catálogo, SLAs y Usuarios
+.tabla-footer-3zonas {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--border-subtle);
+  padding: 12px 16px;
+}
+
+.footer-zona-izq {
+  justify-self: start;
+}
+
+.footer-zona-centro {
+  justify-self: center;
+}
+
+.footer-zona-der {
+  justify-self: end;
+}
+
+.select-filas-pagina {
+  width: 68px;
+
+  :deep(.q-field__control) {
+    min-height: 30px;
+    height: 30px;
+  }
+
+  :deep(.q-field__native),
+  :deep(.q-field__marginal) {
+    min-height: 30px;
+    height: 30px;
+    font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .tabla-footer-3zonas {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .footer-zona-izq,
+  .footer-zona-centro,
+  .footer-zona-der {
+    justify-self: center;
   }
 }
 </style>

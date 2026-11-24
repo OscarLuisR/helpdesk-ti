@@ -6,16 +6,25 @@ import { extraerMensajeErrorApi } from '@/stores/useRolesStore';
 export interface TipoDepartamentoItem {
   id: number;
   nombre: string;
+  descripcion: string;
 }
 
 export interface TipoDepartamentoFormPayload {
   nombre: string;
+  descripcion: string;
 }
 
-function mapearTipoDepartamento(item: TipoDepartamentoItem): TipoDepartamentoItem {
+interface TipoDepartamentoApiRow {
+  id: number | string;
+  nombre: string;
+  descripcion?: string | null;
+}
+
+function mapearTipoDepartamento(item: TipoDepartamentoApiRow): TipoDepartamentoItem {
   return {
     id: Number(item.id),
-    nombre: item.nombre.trim(),
+    nombre: (item.nombre ?? '').trim(),
+    descripcion: (item.descripcion ?? '').trim(),
   };
 }
 
@@ -38,7 +47,7 @@ export const useTipoDepartamentosStore = defineStore('tipoDepartamentos', {
       this.errorCarga = null;
       try {
         const { data: respuesta } =
-          await api.get<RespuestaApi<TipoDepartamentoItem[]>>('/tipo-departamentos');
+          await api.get<RespuestaApi<TipoDepartamentoApiRow[]>>('/tipo-departamentos');
         const lista = Array.isArray(respuesta.data)
           ? respuesta.data.map(mapearTipoDepartamento)
           : [];
@@ -60,6 +69,7 @@ export const useTipoDepartamentosStore = defineStore('tipoDepartamentos', {
       try {
         await api.post('/tipo-departamentos', {
           nombre: payload.nombre.trim(),
+          descripcion: payload.descripcion.trim(),
         });
         await this.cargarTiposDepartamento();
       } catch (err: unknown) {
@@ -77,6 +87,7 @@ export const useTipoDepartamentosStore = defineStore('tipoDepartamentos', {
       try {
         await api.patch(`/tipo-departamentos/${id}`, {
           nombre: payload.nombre.trim(),
+          descripcion: payload.descripcion.trim(),
         });
         await this.cargarTiposDepartamento();
       } catch (err: unknown) {

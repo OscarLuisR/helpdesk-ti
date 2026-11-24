@@ -114,7 +114,7 @@
       </q-dialog>
 
       <div v-if="estaCerrado" class="info-vacio q-pa-sm muted">
-        Este ticket se encuentra <strong>Cerrado</strong>; el chat es de solo lectura.
+        Este ticket se encuentra <strong>{{ ticketEstado }}</strong>; el chat es de solo lectura.
       </div>
 
       <q-form v-else class="composer-box q-pa-sm q-gutter-y-sm" @submit.prevent="enviarComentario">
@@ -170,7 +170,7 @@
       </div>
 
       <div v-if="estaCerrado" class="info-vacio q-pa-sm q-mb-md muted">
-        Este ticket se encuentra <strong>Cerrado</strong>; no admite nuevos adjuntos.
+        Este ticket se encuentra <strong>{{ ticketEstado }}</strong>; no admite nuevos adjuntos.
       </div>
 
       <div v-else-if="limiteAdjuntosAlcanzado" class="info-vacio q-pa-sm q-mb-md muted">
@@ -282,6 +282,7 @@ import { useQuasar, type QRejectedEntry } from 'quasar';
 import type { EstadoTicket, TicketAdjuntoItem, TicketComentarioItem } from '@/models/types';
 import { useAuthStore } from '@/stores/authStore';
 import { useConfiguracionesStore } from '@/stores/useConfiguracionesStore';
+import { formatearFechaHora } from '@/utils/formatFecha';
 import { useTicketStore } from '@/stores/ticketStore';
 
 const props = defineProps<{
@@ -314,7 +315,10 @@ const previewAbierto = ref(false);
 const previewUrl = ref<string | null>(null);
 const previewNombre = ref('');
 
-const estaCerrado = computed(() => props.ticketEstado === 'Cerrado');
+// 🛡️ [FASE 3.3 - TICKETS] Estado terminal estandarizado a Cancelado
+const estaCerrado = computed(() =>
+  ['Cerrado', 'No Resuelto', 'Cancelado'].includes(props.ticketEstado),
+);
 const maxAdjuntosTicket = computed(() => configuracionesStore.maxAdjuntosPorTicket);
 const limiteAdjuntosAlcanzado = computed(
   () => adjuntos.value.length >= maxAdjuntosTicket.value,
@@ -498,7 +502,7 @@ async function descargarArchivo(adj: TicketAdjuntoItem): Promise<void> {
 }
 
 function formatearFecha(fecha: string): string {
-  return new Date(fecha).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' });
+  return formatearFechaHora(fecha);
 }
 
 onUnmounted(() => {

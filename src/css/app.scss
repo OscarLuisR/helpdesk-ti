@@ -63,6 +63,8 @@
   --st-verificar: #15803D;
   --st-reabierto: #6D28D9;
   --st-cerrado: #475569;
+  --st-no-resuelto: #9A3412;
+  --st-cancelado: #64748B;
 
   // === 3. TOKENS DE COMPONENTES ===
   --radius-sm: 8px;
@@ -145,6 +147,8 @@ body.body--dark {
   --st-verificar: #98CBB5;
   --st-reabierto: #C4B5FD;
   --st-cerrado: #9CA3AF;
+  --st-no-resuelto: #FDBA74;
+  --st-cancelado: #94A3B8;
 }
 
 html,
@@ -470,6 +474,10 @@ body.body--dark .q-menu {
 .chip {
   @extend .soft-badge;
 
+  &__dot {
+    @extend .soft-badge__dot;
+  }
+
   &.ok { @extend .soft-badge--ok; }
   &.warn { @extend .soft-badge--warn; }
   &.bad { @extend .soft-badge--bad; }
@@ -482,8 +490,10 @@ body.body--dark .q-menu {
   &.estado-progreso  { background: var(--brand-primary-soft); color: var(--st-progreso); }
   &.estado-espera    { background: var(--warning-soft); color: var(--st-espera); }
   &.estado-verificar { background: var(--success-soft); color: var(--st-verificar); }
-  &.estado-reabierto { background: rgba(109, 40, 217, 0.13); color: var(--st-reabierto); }
-  &.estado-cerrado   { background: var(--surface-subtle); color: var(--st-cerrado); }
+  &.estado-reabierto   { background: rgba(109, 40, 217, 0.13); color: var(--st-reabierto); }
+  &.estado-cerrado     { background: var(--surface-subtle); color: var(--st-cerrado); }
+  &.estado-no-resuelto { background: rgba(194, 65, 12, 0.12); color: var(--st-no-resuelto); }
+  &.estado-cancelado   { background: rgba(100, 116, 139, 0.13); color: var(--st-cancelado); }
 }
 
 body.body--dark .chip.estado-asignado {
@@ -491,6 +501,307 @@ body.body--dark .chip.estado-asignado {
 }
 body.body--dark .chip.estado-reabierto {
   background: rgba(196, 181, 253, 0.14);
+}
+body.body--dark .chip.estado-no-resuelto {
+  background: rgba(234, 148, 84, 0.15);
+}
+body.body--dark .chip.estado-cancelado {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+// 🛡️ [FASE 3 - UI PRIORIDAD] Estándar Opción 1: etiqueta rectangular + borde técnico + barras de señal
+// Paleta Carmesí · Naranja · Azul Cobalto · Pizarra (diferenciada de Estado, Meta y Suplencia)
+.prio-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2.5px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  border: 1px solid transparent;
+
+  &__bars {
+    flex-shrink: 0;
+  }
+
+  &--compacto {
+    gap: 4px;
+    padding: 2px 6px;
+    font-size: 0.69rem;
+  }
+
+  &--critica {
+    background: rgba(190, 18, 60, 0.08);
+    border-color: rgba(190, 18, 60, 0.34);
+    color: #9f1239;
+  }
+
+  &--alta {
+    background: rgba(234, 88, 12, 0.09);
+    border-color: rgba(234, 88, 12, 0.35);
+    color: #c2410c;
+  }
+
+  &--media {
+    background: rgba(37, 99, 235, 0.08);
+    border-color: rgba(37, 99, 235, 0.3);
+    color: #1d4ed8;
+  }
+
+  &--baja {
+    background: rgba(71, 85, 105, 0.08);
+    border-color: rgba(71, 85, 105, 0.28);
+    color: #475569;
+  }
+}
+
+body.body--dark .prio-badge {
+  &--critica {
+    background: rgba(244, 63, 94, 0.14);
+    border-color: rgba(251, 113, 133, 0.36);
+    color: #fda4af;
+  }
+
+  &--alta {
+    background: rgba(249, 115, 22, 0.14);
+    border-color: rgba(251, 146, 60, 0.36);
+    color: #fdba74;
+  }
+
+  &--media {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(96, 165, 250, 0.36);
+    color: #93c5fd;
+  }
+
+  &--baja {
+    background: rgba(148, 163, 184, 0.13);
+    border-color: rgba(148, 163, 184, 0.3);
+    color: #cbd5e1;
+  }
+}
+
+// 🛡️ [FASE 3 - UI ROLES] Estándar Diseño 1: paleta unificada de autoridad + ícono de perfil
+// Diferenciada de Prioridades (Carmesí/Naranja/Azul/Pizarra) y Estados (• Activo/Inactivo)
+.rol-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+
+  &__icon {
+    flex-shrink: 0;
+  }
+
+  &--mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.69rem;
+    letter-spacing: 0.02em;
+  }
+
+  &--adm {
+    background: rgba(109, 40, 217, 0.1);
+    color: #6d28d9;
+  }
+
+  &--dir {
+    background: rgba(55, 48, 163, 0.1);
+    color: #3730a3;
+  }
+
+  &--ger {
+    background: rgba(161, 98, 7, 0.11);
+    color: #854d0e;
+  }
+
+  &--mes {
+    background: rgba(14, 116, 144, 0.1);
+    color: #0e7490;
+  }
+
+  &--tec {
+    background: rgba(4, 120, 87, 0.1);
+    color: #047857;
+  }
+
+  &--usr {
+    background: rgba(87, 83, 78, 0.09);
+    color: #57534e;
+  }
+}
+
+body.body--dark .rol-badge {
+  &--adm {
+    background: rgba(167, 139, 250, 0.15);
+    color: #c4b5fd;
+  }
+
+  &--dir {
+    background: rgba(129, 140, 248, 0.15);
+    color: #a5b4fc;
+  }
+
+  &--ger {
+    background: rgba(234, 179, 8, 0.14);
+    color: #fde047;
+  }
+
+  &--mes {
+    background: rgba(34, 211, 238, 0.13);
+    color: #67e8f9;
+  }
+
+  &--tec {
+    background: rgba(52, 211, 153, 0.13);
+    color: #6ee7b7;
+  }
+
+  &--usr {
+    background: rgba(168, 162, 158, 0.13);
+    color: #d6d3d1;
+  }
+}
+
+// Botón Restablecer Contraseña (Ámbar Seguridad — diferenciado de Editar Teal y Desactivar Rojo)
+.btn-accion-reset {
+  color: #b45309 !important;
+
+  &::before {
+    border-color: rgba(180, 83, 9, 0.42) !important;
+  }
+
+  &:hover {
+    background: rgba(180, 83, 9, 0.1) !important;
+  }
+}
+
+body.body--dark .btn-accion-reset {
+  color: #fbbf24 !important;
+
+  &::before {
+    border-color: rgba(251, 191, 36, 0.4) !important;
+  }
+
+  &:hover {
+    background: rgba(251, 191, 36, 0.14) !important;
+  }
+}
+
+// 🛡️ [FASE 3 - UI TIPO DEPARTAMENTOS] Paleta A Mineral & Arquitectónica (Salvia Pino · Acero Marino · Arena Terracota)
+// Firma visual propia (8px + borde sutil + ícono estructural), diferenciada de Roles, Prioridades y Estados
+.tipo-depto-tone--gerencia {
+  --td-card-bg: #f4faf6;
+  --td-tag-bg: #e6f4ec;
+  --td-border: #b5d9c6;
+  --td-ink: #14523d;
+}
+
+.tipo-depto-tone--subgerencia {
+  --td-card-bg: #f3f8fb;
+  --td-tag-bg: #e5f0f7;
+  --td-border: #b8d4e6;
+  --td-ink: #1e4e6e;
+}
+
+.tipo-depto-tone--usuaria {
+  --td-card-bg: #fbf6f1;
+  --td-tag-bg: #f5eae0;
+  --td-border: #e2c9b3;
+  --td-ink: #7a4a28;
+}
+
+.tipo-depto-tone--extra1 {
+  --td-card-bg: #f9f4f7;
+  --td-tag-bg: #f2e7ee;
+  --td-border: #dcc2d3;
+  --td-ink: #6e3c5c;
+}
+
+.tipo-depto-tone--extra2 {
+  --td-card-bg: #f7faf2;
+  --td-tag-bg: #edf4e1;
+  --td-border: #c8d9ad;
+  --td-ink: #3f5519;
+}
+
+body.body--dark {
+  .tipo-depto-tone--gerencia {
+    --td-card-bg: rgba(56, 152, 118, 0.08);
+    --td-tag-bg: rgba(56, 152, 118, 0.16);
+    --td-border: rgba(116, 200, 168, 0.3);
+    --td-ink: #8ad2b6;
+  }
+
+  .tipo-depto-tone--subgerencia {
+    --td-card-bg: rgba(72, 148, 196, 0.08);
+    --td-tag-bg: rgba(72, 148, 196, 0.16);
+    --td-border: rgba(126, 190, 228, 0.3);
+    --td-ink: #92c9e8;
+  }
+
+  .tipo-depto-tone--usuaria {
+    --td-card-bg: rgba(196, 134, 88, 0.08);
+    --td-tag-bg: rgba(196, 134, 88, 0.16);
+    --td-border: rgba(222, 170, 128, 0.3);
+    --td-ink: #e0b490;
+  }
+
+  .tipo-depto-tone--extra1 {
+    --td-card-bg: rgba(180, 112, 154, 0.08);
+    --td-tag-bg: rgba(180, 112, 154, 0.16);
+    --td-border: rgba(216, 158, 194, 0.3);
+    --td-ink: #dba5c7;
+  }
+
+  .tipo-depto-tone--extra2 {
+    --td-card-bg: rgba(142, 176, 78, 0.08);
+    --td-tag-bg: rgba(142, 176, 78, 0.16);
+    --td-border: rgba(184, 214, 128, 0.3);
+    --td-ink: #bfd98c;
+  }
+}
+
+.tipo-depto-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  background: var(--td-tag-bg);
+  border: 1px solid var(--td-border);
+  color: var(--td-ink);
+
+  &__icon {
+    flex-shrink: 0;
+  }
+
+  &--compacto {
+    padding: 1.5px 7px;
+    font-size: 0.65rem;
+    gap: 4px;
+  }
+
+  &--clickable {
+    cursor: pointer;
+    transition: filter 140ms ease, transform 140ms ease;
+
+    &:hover {
+      filter: brightness(0.96);
+    }
+  }
 }
 
 .tabla-card {

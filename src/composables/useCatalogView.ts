@@ -11,13 +11,55 @@ import {
 import { esDepartamentoTI, useDepartmentsStore, type Department } from '@/stores/useDepartmentsStore';
 import { usePrioridadesStore, type PrioridadItem } from '@/stores/usePrioridadesStore';
 
+// 🛡️ [FASE 3 - UI CATÁLOGO] Anchos fijos proporcionales (100%) con botones solo-ícono (Opción A)
 export const COLUMNAS_CATALOGO: QTableColumn<ServiceCatalog>[] = [
-  { name: 'nombre', label: 'Nombre del Servicio / Incidencia', field: 'nombre', align: 'left', sortable: true },
-  { name: 'departamento', label: 'Departamento Asignado', field: 'departamento', align: 'left', sortable: true },
-  { name: 'prioridad', label: 'Prioridad', field: 'prioridad', align: 'left', sortable: true },
-  { name: 'estado', label: 'Estado', field: 'estado', align: 'left', sortable: true },
-  { name: 'acciones', label: 'Acciones', field: 'id', align: 'right' },
+  {
+    name: 'nombre',
+    label: 'Nombre del Servicio / Incidencia',
+    field: 'nombre',
+    align: 'left',
+    sortable: true,
+    headerStyle: 'width: 42%',
+    style: 'width: 42%',
+  },
+  {
+    name: 'departamento',
+    label: 'Departamento Asignado',
+    field: 'departamento',
+    align: 'left',
+    sortable: true,
+    headerStyle: 'width: 24%',
+    style: 'width: 24%',
+  },
+  {
+    name: 'prioridad',
+    label: 'Prioridad',
+    field: 'prioridad',
+    align: 'left',
+    sortable: true,
+    headerStyle: 'width: 11%',
+    style: 'width: 11%',
+  },
+  {
+    name: 'estado',
+    label: 'Estado',
+    field: 'estado',
+    align: 'left',
+    sortable: true,
+    headerStyle: 'width: 11%',
+    style: 'width: 11%',
+  },
+  {
+    name: 'acciones',
+    label: 'Acciones',
+    field: 'id',
+    align: 'right',
+    headerStyle: 'width: 12%',
+    style: 'width: 12%',
+  },
 ];
+
+export const OPCIONES_FILAS_POR_PAGINA_CATALOGO = [3, 5, 10, 15, 20];
 
 export const OPCIONES_FILTRO_ESTADO: readonly string[] = ['Todos', 'Activo', 'Inactivo'];
 
@@ -45,15 +87,22 @@ export function useCatalogView() {
   const filtroPrioridad = ref<number | 'TODAS'>('TODAS');
   const filtroEstado = ref<string>('Todos');
 
-  const filasPorPagina = 6;
   const paginacion = ref<NonNullable<QTableProps['pagination']>>({
     sortBy: null,
     descending: false,
     page: 1,
-    rowsPerPage: filasPorPagina,
+    rowsPerPage: 5,
   });
 
-  const paginaActual = computed({
+  const filasPorPagina = computed<number>({
+    get: () => paginacion.value.rowsPerPage ?? 5,
+    set: (val: number) => {
+      const cantidad = Number(val) > 0 ? Number(val) : 5;
+      paginacion.value = { ...paginacion.value, rowsPerPage: cantidad, page: 1 };
+    },
+  });
+
+  const paginaActual = computed<number>({
     get: () => paginacion.value.page ?? 1,
     set: (val: number) => {
       paginacion.value = { ...paginacion.value, page: val };
@@ -106,16 +155,18 @@ export function useCatalogView() {
     });
   });
 
-  const totalPaginas = computed(() =>
-    Math.max(1, Math.ceil(serviciosFiltrados.value.length / filasPorPagina)),
-  );
+  const totalPaginas = computed(() => {
+    const porPagina = Math.max(1, filasPorPagina.value);
+    return Math.max(1, Math.ceil(serviciosFiltrados.value.length / porPagina));
+  });
 
   const textoMostrando = computed(() => {
     const total = serviciosFiltrados.value.length;
-    if (total === 0) return '0 servicios';
-    const inicio = (paginaActual.value - 1) * filasPorPagina + 1;
-    const fin = Math.min(inicio + filasPorPagina - 1, total);
-    return `Mostrando ${inicio}-${fin} de ${total} servicios`;
+    if (total === 0) return 'Mostrando 0 de 0 servicios';
+    const porPagina = Math.max(1, filasPorPagina.value);
+    const inicio = (paginaActual.value - 1) * porPagina + 1;
+    const fin = Math.min(paginaActual.value * porPagina, total);
+    return `Mostrando ${inicio}–${fin} de ${total} servicios`;
   });
 
   watch([busqueda, filtroDepartamento, filtroPrioridad, filtroEstado], () => {
@@ -215,6 +266,7 @@ export function useCatalogView() {
     filtroPrioridad,
     filtroEstado,
     paginacion,
+    filasPorPagina,
     paginaActual,
     totalPaginas,
     serviciosFiltrados,
