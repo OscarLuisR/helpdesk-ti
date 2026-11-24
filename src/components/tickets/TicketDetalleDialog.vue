@@ -35,7 +35,7 @@
         align="left"
         active-color="primary"
         indicator-color="primary"
-        class="text-grey-7 tabs-barra q-px-md"
+        class="tabs-barra q-px-md"
         no-caps
       >
         <q-tab name="resumen" icon="info" label="Resumen y Acciones" />
@@ -1038,12 +1038,33 @@ function formatearFecha(fecha: string): string {
   overflow: hidden;
 }
 
-.detalle-body {
-  overflow-y: auto;
+.tabs-barra {
+  background: var(--surface-card);
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+
+  :deep(.q-tab) {
+    color: var(--text-muted);
+    transition: color var(--transition-ui);
+
+    &:hover {
+      color: var(--text-primary);
+    }
+  }
+
+  :deep(.q-tab--active) {
+    color: var(--brand-ink);
+  }
 }
 
-.tabs-barra {
-  border-bottom: 1px solid var(--border-subtle);
+.detalle-body {
+  overflow-y: auto;
+
+  :deep(.q-tab-panels),
+  :deep(.q-tab-panel) {
+    background: transparent;
+    color: var(--text-primary);
+  }
 }
 
 .info-box {

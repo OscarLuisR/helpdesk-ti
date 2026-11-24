@@ -149,6 +149,18 @@ body.body--dark {
   --st-cerrado: #9CA3AF;
   --st-no-resuelto: #FDBA74;
   --st-cancelado: #94A3B8;
+
+  // Re-evaluación obligatoria de alias heredados en modo oscuro
+  --primary: var(--brand-primary);
+  --primary-hover: var(--brand-primary-hover);
+  --primary-soft: var(--brand-primary-soft);
+  --navy: var(--text-secondary);
+  --accent: var(--warning);
+  --bg: var(--surface-bg);
+  --surface: var(--surface-card);
+  --border: var(--border-subtle);
+  --text: var(--text-primary);
+  --muted: var(--text-muted);
 }
 
 html,
@@ -204,6 +216,24 @@ body.body--dark {
 
   .q-separator--dark {
     background: var(--border-subtle);
+  }
+
+  .q-list--bordered {
+    border-color: var(--border-subtle);
+  }
+
+  .q-list--separator > .q-item-type + .q-item-type {
+    border-top-color: var(--border-subtle);
+  }
+
+  .q-item__label--caption,
+  .q-field__bottom,
+  .q-field__counter {
+    color: var(--text-muted);
+  }
+
+  .q-tab__indicator.bg-primary {
+    background-color: var(--brand-ink) !important;
   }
 }
 

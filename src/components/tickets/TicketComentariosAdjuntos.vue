@@ -60,7 +60,7 @@
           </div>
           <div
             class="text-body2 whitespace-preline"
-            :class="item.is_anulado ? 'text-strike text-grey-6' : 'text-dark'"
+            :class="item.is_anulado ? 'text-strike muted' : 'text-dark'"
           >
             {{ item.mensaje }}
           </div>
@@ -192,7 +192,7 @@
               @rejected="onArchivoRechazado"
             >
               <template #prepend>
-                <q-icon name="attach_file" color="grey-7" />
+                <q-icon name="attach_file" class="muted" />
               </template>
             </q-file>
           </div>
@@ -216,7 +216,7 @@
         No hay evidencias adjuntas en este ticket.
       </div>
 
-      <q-list v-else bordered separator class="rounded-borders">
+      <q-list v-else bordered separator class="rounded-borders lista-adjuntos">
         <q-item v-for="adj in adjuntos" :key="adj.id" class="q-py-sm">
           <q-item-section avatar>
             <q-icon :name="iconoArchivo(adj.nombre_archivo)" color="primary" size="26px" />
@@ -226,7 +226,7 @@
             <q-item-label class="text-weight-medium text-dark">
               {{ adj.nombre_archivo }}
             </q-item-label>
-            <q-item-label caption>
+            <q-item-label caption class="muted">
               {{ adj.peso_kb ?? 0 }} KB · Subido por {{ adj.usuario_sube }} ·
               {{ formatearFecha(adj.fecha_subida) }}
             </q-item-label>
@@ -512,9 +512,10 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .info-vacio {
-  background: var(--bg);
-  border: 1px dashed var(--border);
-  border-radius: 8px;
+  background: var(--surface-bg);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
   font-size: 0.86rem;
 }
 
@@ -524,12 +525,13 @@ onUnmounted(() => {
 }
 
 .chat-burbuja {
-  border-radius: 8px;
-  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
 }
 
 .nota-publica {
-  background: var(--surface);
+  background: var(--surface-bg);
 }
 
 .nota-interna {
@@ -545,13 +547,27 @@ onUnmounted(() => {
 .confirmar-card {
   width: 100%;
   max-width: 420px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-primary);
 }
 
 .composer-box {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+}
+
+.lista-adjuntos {
+  background: var(--surface-bg);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+
+  :deep(.q-item + .q-item) {
+    border-top-color: var(--border-subtle);
+  }
 }
 
 .whitespace-preline {
@@ -561,7 +577,10 @@ onUnmounted(() => {
 .preview-card {
   width: 100%;
   max-width: 720px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-primary);
 }
 
 .preview-img {
