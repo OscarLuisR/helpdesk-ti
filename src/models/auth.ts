@@ -29,12 +29,21 @@ export interface PayloadUsuarioBackend {
   id_departamento?: number;
 }
 
+/** Metadatos de paginación server-side devueltos por endpoints paginados. */
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
 /** Envoltorio estándar de respuesta exitosa del backend HelpDesk TI. */
 export interface RespuestaApi<T> {
   error: boolean;
   status: number;
   message: string;
   data: T;
+  pagination?: PaginationMeta | null;
 }
 
 /** Envoltorio estándar de respuesta de error del backend HelpDesk TI. */

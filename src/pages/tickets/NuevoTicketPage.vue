@@ -125,7 +125,7 @@
               </q-select>
             </div>
 
-            <!-- 🛡️ [FASE 3.1 / 3.2 - SOLICITANTES] Fila adaptada con botón de búsqueda habilitado solo tras elegir departamento -->
+            <!-- 🛡️ [FASE 3.1 / 3.2 - SOLICITANTES] Campos bloqueados hasta seleccionar Departamento Solicitante -->
             <div class="row q-col-gutter-md items-start">
               <div class="col-12 col-sm-6">
                 <label class="field-label">Nombre del Solicitante *</label>
@@ -134,6 +134,7 @@
                   outlined
                   dense
                   maxlength="100"
+                  :disable="!tieneDepartamentoSolicitante"
                   placeholder="Ej. Ana Valencia"
                   :rules="[
                     (v: string) =>
@@ -152,12 +153,12 @@
                   icon="search"
                   label="Buscar"
                   class="full-width btn-buscar-solicitante"
-                  :disable="!form.id_departamento_solicitante"
+                  :disable="!tieneDepartamentoSolicitante"
                   @click="buscadorSolicitanteAbierto = true"
                 >
                   <q-tooltip>
                     {{
-                      form.id_departamento_solicitante
+                      tieneDepartamentoSolicitante
                         ? 'Buscar solicitante registrado en este departamento'
                         : 'Selecciona primero un departamento solicitante'
                     }}
@@ -171,6 +172,7 @@
                   outlined
                   dense
                   mask="####-#######"
+                  :disable="!tieneDepartamentoSolicitante"
                   placeholder="0412-1234567"
                   :rules="[validarTelefonoUsuario]"
                 />
@@ -178,12 +180,12 @@
             </div>
 
             <div>
-              <label class="field-label">Incidencia del Catálogo *</label>
+              <label class="field-label">Catálogo de Incidencias *</label>
               <q-select
                 v-model="form.id_catalogo"
                 :options="opcionesCatalogoFiltradas"
                 option-value="id"
-                :option-label="(c) => `${c.nombre} (${c.departamento} · ${c.prioridad})`"
+                :option-label="(c) => `${c.departamento} — ${c.nombre} (${c.prioridad})`"
                 emit-value
                 map-options
                 use-input
@@ -191,6 +193,7 @@
                 outlined
                 dense
                 clearable
+                :disable="!tieneDepartamentoSolicitante"
                 :loading="catalogStore.cargando"
                 placeholder="Buscar falla o requerimiento en el catálogo..."
                 :rules="[(v) => (v !== null && v > 0) || 'Selecciona una incidencia del catálogo.']"
@@ -215,6 +218,7 @@
                 rows="5"
                 maxlength="2000"
                 counter
+                :disable="!tieneDepartamentoSolicitante"
                 placeholder="Describe el síntoma reportado, ubicación y mensajes de error observados..."
                 :rules="[
                   (v) => (v && v.trim().length >= 10) || 'Ingresa al menos 10 caracteres.',
@@ -223,8 +227,8 @@
               />
             </div>
 
-            <!-- 🛡️ [FASE 3.3 - TICKETS] Switch de Cierre Directo Nivel 1 en llamada inicial -->
-            <div class="n1-panel q-pa-md">
+            <!-- 🛡️ [FASE 3.3 - TICKETS] Switch de Cierre Directo Nivel 1 (habilitado solo para incidencias de Mesa Técnica TI-MT) -->
+            <div class="n1-panel q-pa-md" :class="{ 'n1-panel--deshabilitado': !puedeCierreDirectoN1 }">
               <div class="row items-center justify-between q-gutter-y-xs">
                 <div>
                   <q-toggle
@@ -232,18 +236,35 @@
                     color="positive"
                     label="Resuelto en Nivel 1 (Cierre Directo)"
                     class="text-weight-bold text-dark"
+                    :disable="!puedeCierreDirectoN1"
                     @update:model-value="alAlternarCierreDirectoN1"
                   />
                   <div class="text-caption muted q-pl-sm">
-                    Activa esta opción si el caso se resolvió en la misma llamada inicial. El ticket se creará directamente en estado <strong>Cerrado</strong>.
+                    <template v-if="puedeCierreDirectoN1">
+                      <template v-if="form.cierre_directo_n1 && !form.conformidad_usuario">
+                        Sin conformidad del solicitante, el ticket se registrará en estado <strong>Abierto</strong> guardando las notas y observación en la bitácora.
+                      </template>
+                      <template v-else>
+                        Activa esta opción si el caso se resolvió en la misma llamada inicial. El ticket se creará directamente en estado <strong>Cerrado</strong> solo si el solicitante confirma conformidad.
+                      </template>
+                    </template>
+                    <template v-else-if="!tieneDepartamentoSolicitante">
+                      Selecciona primero un <strong>Departamento Solicitante</strong> y una incidencia de <strong>Mesa Técnica (TI-MT)</strong>.
+                    </template>
+                    <template v-else>
+                      Disponible únicamente para incidencias del catálogo pertenecientes a <strong>Mesa Técnica (TI-MT)</strong>.
+                    </template>
                   </div>
                 </div>
-                <span v-if="form.cierre_directo_n1" class="chip ok">Cierre Atómico N1</span>
+                <span v-if="cerraraDirectoEnApertura" class="chip ok">Cierre Atómico N1</span>
+                <span v-else-if="form.cierre_directo_n1" class="chip warn">Sin conformidad · Nace Abierto</span>
               </div>
 
               <div v-if="form.cierre_directo_n1" class="q-mt-md q-gutter-y-sm">
                 <div>
-                  <label class="field-label">Causa Raíz *</label>
+                  <label class="field-label">
+                    {{ cerraraDirectoEnApertura ? 'Causa Raíz *' : 'Diagnóstico preliminar (opcional)' }}
+                  </label>
                   <q-input
                     v-model="form.causa_raiz"
                     outlined
@@ -255,14 +276,16 @@
                     placeholder="Ej. Contraseña bloqueada por intentos fallidos o cable de video desconectado."
                     :rules="[
                       (v) =>
-                        !form.cierre_directo_n1 ||
+                        !cerraraDirectoEnApertura ||
                         (v && v.trim().length >= 5) ||
                         'Ingresa la causa raíz (mín. 5 caracteres).',
                     ]"
                   />
                 </div>
                 <div>
-                  <label class="field-label">Solución Aplicada *</label>
+                  <label class="field-label">
+                    {{ cerraraDirectoEnApertura ? 'Solución Aplicada *' : 'Acción intentada (opcional)' }}
+                  </label>
                   <q-input
                     v-model="form.solucion_aplicada"
                     outlined
@@ -274,7 +297,7 @@
                     placeholder="Ej. Se restableció contraseña en directorio activo y el usuario ingresó correctamente."
                     :rules="[
                       (v) =>
-                        !form.cierre_directo_n1 ||
+                        !cerraraDirectoEnApertura ||
                         (v && v.trim().length >= 5) ||
                         'Documenta la solución aplicada (mín. 5 caracteres).',
                     ]"
@@ -300,7 +323,7 @@
             </div>
 
             <!-- 🛡️ [FASE 3 - EVIDENCIAS EN APERTURA] Hasta 3 imágenes con validación de formato, peso y Magic Bytes -->
-            <div v-if="!form.cierre_directo_n1">
+            <div v-if="!cerraraDirectoEnApertura">
               <div class="row items-center justify-between q-mb-xs">
                 <label class="field-label q-mb-none">
                   Imágenes de Evidencia (Opcional · {{ imagenesAdjuntas.length }}/{{ maxImagenesPermitidas }})
@@ -322,10 +345,11 @@
               <div
                 class="dropzone-evidencia q-pa-md"
                 :class="{
-                  'dropzone-evidencia--activa': arrastrandoImagen,
+                  'dropzone-evidencia--activa': arrastrandoImagen && tieneDepartamentoSolicitante,
                   'dropzone-evidencia--llena': imagenesAdjuntas.length >= maxImagenesPermitidas,
+                  'dropzone-evidencia--deshabilitada': !tieneDepartamentoSolicitante,
                 }"
-                @dragover.prevent="arrastrandoImagen = true"
+                @dragover.prevent="tieneDepartamentoSolicitante && (arrastrandoImagen = true)"
                 @dragleave.prevent="arrastrandoImagen = false"
                 @drop.prevent="alSoltarArchivos"
               >
@@ -348,7 +372,12 @@
                       color="primary"
                       icon="upload_file"
                       label="Seleccionar imágenes"
-                      :disable="enviando || validandoImagenes || imagenesAdjuntas.length >= maxImagenesPermitidas"
+                      :disable="
+                        !tieneDepartamentoSolicitante ||
+                        enviando ||
+                        validandoImagenes ||
+                        imagenesAdjuntas.length >= maxImagenesPermitidas
+                      "
                       :loading="validandoImagenes"
                       @click="abrirSelectorImagenes"
                     />
@@ -426,11 +455,11 @@
                 type="submit"
                 unelevated
                 no-caps
-                :color="form.cierre_directo_n1 ? 'positive' : 'primary'"
-                :icon="form.cierre_directo_n1 ? 'verified' : 'confirmation_number'"
-                :label="form.cierre_directo_n1 ? 'Registrar y Cerrar en Nivel 1' : 'Registrar Ticket'"
+                :color="cerraraDirectoEnApertura ? 'positive' : 'primary'"
+                :icon="cerraraDirectoEnApertura ? 'verified' : 'confirmation_number'"
+                :label="cerraraDirectoEnApertura ? 'Registrar y Cerrar en Nivel 1' : 'Registrar Ticket'"
                 :loading="enviando || ticketStore.guardando"
-                :disable="validandoImagenes"
+                :disable="!tieneDepartamentoSolicitante || validandoImagenes"
               />
             </div>
           </q-form>
@@ -602,7 +631,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useQuasar, type QForm } from 'quasar';
 import PrioridadBadge from '@/components/common/PrioridadBadge.vue';
 import BuscarSolicitanteDialog from '@/components/tickets/BuscarSolicitanteDialog.vue';
@@ -617,6 +646,10 @@ import {
   formatearTamanoArchivo,
   validarArchivoImagenSeguro,
 } from '@/utils/adjuntos';
+import {
+  ordenarCatalogoPorDepartamentoEIncidencia,
+  ordenarPorTexto,
+} from '@/utils/ordenarOpciones';
 
 interface ImagenAdjuntaLocal {
   idLocal: string;
@@ -674,8 +707,13 @@ const validandoImagenes = ref(false);
 const enviando = ref(false);
 const textoProgresoSubida = ref<string | null>(null);
 
-const departamentosActivos = computed(() => departmentsStore.departamentosActivos);
-const catalogoActivo = computed(() => catalogStore.serviciosActivos);
+// 🛡️ [FASE 3 - UI COMBOS] Departamentos ordenados A-Z por nombre y catálogo por departamento + incidencia
+const departamentosActivos = computed(() =>
+  ordenarPorTexto(departmentsStore.departamentosActivos, (d) => d.nombre),
+);
+const catalogoActivo = computed(() =>
+  ordenarCatalogoPorDepartamentoEIncidencia(catalogStore.serviciosActivos),
+);
 const maxImagenesPermitidas = computed(() =>
   Math.max(
     1,
@@ -702,9 +740,41 @@ const opcionesCatalogoFiltradas = computed<ServiceCatalog[]>(() => {
   );
 });
 
+const tieneDepartamentoSolicitante = computed(() =>
+  Boolean(form.id_departamento_solicitante && form.id_departamento_solicitante > 0),
+);
+
 const incidenciaSeleccionada = computed<ServiceCatalog | null>(() => {
   if (!form.id_catalogo) return null;
   return catalogoActivo.value.find((c) => c.id === form.id_catalogo) ?? null;
+});
+
+const esIncidenciaMesaTecnica = computed(() => {
+  const inc = incidenciaSeleccionada.value;
+  if (!inc) return false;
+  if (inc.codigo_departamento) {
+    return inc.codigo_departamento.trim().toUpperCase() === 'TI-MT';
+  }
+  const dpto = departmentsStore.departments.find((d) => d.id === inc.id_departamento);
+  return dpto?.codigo.trim().toUpperCase() === 'TI-MT';
+});
+
+const puedeCierreDirectoN1 = computed(
+  () => tieneDepartamentoSolicitante.value && esIncidenciaMesaTecnica.value,
+);
+
+const cerraraDirectoEnApertura = computed(
+  () => form.cierre_directo_n1 && form.conformidad_usuario,
+);
+
+watch(esIncidenciaMesaTecnica, (esMt) => {
+  if (!esMt && form.cierre_directo_n1) {
+    form.cierre_directo_n1 = false;
+    form.causa_raiz = '';
+    form.solucion_aplicada = '';
+    form.comentario = '';
+    form.conformidad_usuario = true;
+  }
 });
 
 const prioridadCalculada = computed(() => {
@@ -729,6 +799,7 @@ function filtrarCatalogo(val: string, update: (fn: () => void) => void): void {
 }
 
 function abrirSelectorImagenes(): void {
+  if (!tieneDepartamentoSolicitante.value) return;
   inputImagenesRef.value?.click();
 }
 
@@ -815,12 +886,13 @@ function alSeleccionarArchivos(ev: Event): void {
 
 function alSoltarArchivos(ev: DragEvent): void {
   arrastrandoImagen.value = false;
+  if (!tieneDepartamentoSolicitante.value) return;
   const archivos = ev.dataTransfer?.files ? Array.from(ev.dataTransfer.files) : [];
   void agregarArchivos(archivos);
 }
 
 function alPegarImagen(ev: ClipboardEvent): void {
-  if (form.cierre_directo_n1) return;
+  if (!tieneDepartamentoSolicitante.value || cerraraDirectoEnApertura.value) return;
   const items = ev.clipboardData?.items;
   if (!items) return;
 
@@ -859,6 +931,12 @@ function alSeleccionarSolicitante(solicitante: SolicitanteItem): void {
 }
 
 function alCambiarDepartamentoSolicitante(): void {
+  // Si se limpia el departamento solicitante, se reinician y bloquean todos los demás campos
+  if (!tieneDepartamentoSolicitante.value) {
+    limpiarCamposTexto();
+    return;
+  }
+
   // Si se cambia a otro departamento distinto al del solicitante elegido, será una inserción nueva
   if (
     solicitanteOriginal.value &&
@@ -870,7 +948,7 @@ function alCambiarDepartamentoSolicitante(): void {
 }
 
 function alAlternarCierreDirectoN1(activo: boolean): void {
-  if (activo && imagenesAdjuntas.value.length > 0) {
+  if (activo && form.conformidad_usuario && imagenesAdjuntas.value.length > 0) {
     liberarPreviewsImagenes();
     $q.notify({
       type: 'info',
@@ -954,7 +1032,7 @@ async function enviarFormulario(): Promise<void> {
     return;
   }
 
-  if (form.cierre_directo_n1) {
+  if (cerraraDirectoEnApertura.value) {
     if (form.causa_raiz.trim().length < 5 || form.solucion_aplicada.trim().length < 5) {
       errorFormulario.value =
         'Para el Cierre Directo Nivel 1 debes ingresar la causa raíz y la solución aplicada (mín. 5 caracteres cada una).';
@@ -1038,8 +1116,10 @@ async function ejecutarRegistroTicket(opciones: {
     const camposN1 = form.cierre_directo_n1
       ? {
           cierre_directo_n1: true,
-          causa_raiz: form.causa_raiz.trim(),
-          solucion_aplicada: form.solucion_aplicada.trim(),
+          ...(form.causa_raiz.trim() ? { causa_raiz: form.causa_raiz.trim() } : {}),
+          ...(form.solucion_aplicada.trim()
+            ? { solucion_aplicada: form.solucion_aplicada.trim() }
+            : {}),
           conformidad_usuario: form.conformidad_usuario,
           ...(form.comentario.trim() ? { comentario: form.comentario.trim() } : {}),
         }
@@ -1071,12 +1151,14 @@ async function ejecutarRegistroTicket(opciones: {
 
     ultimoFolioCreado.value = creado.folio;
 
-    // 2. Subir secuencialmente las imágenes validadas (si hay y no es cierre directo N1)
-    const totalImagenes = form.cierre_directo_n1 ? 0 : imagenesAdjuntas.value.length;
+    // 2. Subir secuencialmente las imágenes validadas (si hay y no nace cerrado en Nivel 1)
+    const fueCierreDirecto = cerraraDirectoEnApertura.value;
+    const fueSinConformidadN1 = form.cierre_directo_n1 && !form.conformidad_usuario;
+    const totalImagenes = fueCierreDirecto ? 0 : imagenesAdjuntas.value.length;
     let exitosas = 0;
     const fallidas: Array<{ nombre: string; motivo: string }> = [];
 
-    if (!form.cierre_directo_n1) {
+    if (!fueCierreDirecto) {
       for (const [idx, item] of imagenesAdjuntas.value.entries()) {
         item.estado = 'subiendo';
         textoProgresoSubida.value = `Subiendo imagen ${idx + 1} de ${totalImagenes}...`;
@@ -1094,7 +1176,6 @@ async function ejecutarRegistroTicket(opciones: {
       }
     }
 
-    const fueCierreDirecto = form.cierre_directo_n1;
     // Limpiar el formulario tras crear el ticket para evitar envíos duplicados
     limpiarCamposTexto();
 
@@ -1107,7 +1188,9 @@ async function ejecutarRegistroTicket(opciones: {
         type: 'positive',
         message: fueCierreDirecto
           ? `Ticket ${creado.folio} registrado y cerrado en Nivel 1 correctamente.`
-          : `Ticket ${creado.folio} registrado correctamente${detalleImg}.`,
+          : fueSinConformidadN1
+            ? `Ticket ${creado.folio} registrado en estado Abierto (sin conformidad del solicitante)${detalleImg}.`
+            : `Ticket ${creado.folio} registrado correctamente${detalleImg}.`,
         position: 'top-right',
         timeout: 4000,
       });
@@ -1198,6 +1281,11 @@ onMounted(async () => {
   background: var(--surface-bg);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
+
+  &--deshabilitado {
+    opacity: 0.65;
+    border-color: var(--border-subtle);
+  }
 }
 
 .dropzone-evidencia {
@@ -1215,6 +1303,11 @@ onMounted(async () => {
 
   &--llena {
     border-style: solid;
+  }
+
+  &--deshabilitada {
+    opacity: 0.55;
+    pointer-events: none;
   }
 }
 

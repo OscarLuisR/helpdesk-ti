@@ -62,7 +62,7 @@
             <div class="col-12 col-md-6">
               <q-select
                 v-model="idTipoDepartamento"
-                :options="tiposDepartamento"
+                :options="opcionesTiposDepartamento"
                 option-value="id"
                 option-label="nombre"
                 emit-value
@@ -164,6 +164,7 @@ import { useQuasar, type QForm } from 'quasar';
 import TipoDepartamentoBadge from '@/components/common/TipoDepartamentoBadge.vue';
 import type { Department, DepartmentFormPayload } from '@/stores/useDepartmentsStore';
 import type { TipoDepartamentoItem } from '@/stores/useTipoDepartamentosStore';
+import { ordenarPorTexto } from '@/utils/ordenarOpciones';
 
 const PATRON_TELEFONO = /^\d{4}-\d{7}$/;
 
@@ -189,6 +190,11 @@ const ubicacion = ref('');
 const idTipoDepartamento = ref<number | null>(null);
 const formRef = ref<QForm | null>(null);
 const activoToggle = ref(true);
+
+// 🛡️ [FASE 3 - UI COMBOS] Tipos de departamento ordenados alfabéticamente por nombre
+const opcionesTiposDepartamento = computed<TipoDepartamentoItem[]>(() =>
+  ordenarPorTexto(props.tiposDepartamento, (t) => t.nombre),
+);
 
 const tipoSeleccionado = computed<TipoDepartamentoItem | null>(() => {
   if (!idTipoDepartamento.value) return null;

@@ -471,8 +471,9 @@ async function cargarDatos(): Promise<void> {
   cargando.value = true;
   errorCarga.value = null;
   try {
+    // 🛡️ [FASE 4.1 - ESCALABILIDAD] Consulta únicamente tickets activos (índice parcial SQL), evitando traer históricos cerrados
     const [, listaTecnicos] = await Promise.all([
-      ticketStore.cargarTickets(),
+      ticketStore.cargarTickets({ solo_activos: true }),
       ticketStore.cargarTecnicosDisponibles(),
     ]);
     tecnicos.value = listaTecnicos;

@@ -40,7 +40,7 @@
           icon="inbox"
           :label="etiquetaBotonBandeja"
           :class="{ 'col-grow': $q.screen.xs }"
-          :to="rutaBandejaRol"
+          :to="destinoBandejaRol"
         />
         <q-btn
           v-if="puedeCrearTicket"
@@ -59,91 +59,135 @@
       {{ errorCarga }}
     </div>
 
-    <!-- 🛡️ [FASE 3.6 - DASHBOARD] Filtro por período y franja de relojes reales desde ticket_bitacora -->
-    <q-card flat bordered class="modern-card q-pa-md q-mb-md">
-      <div class="row items-center justify-between q-gutter-sm q-mb-sm">
-        <div class="row items-center q-gutter-xs flex-wrap">
-          <q-btn
-            v-for="preset in PRESETS_PERIODO"
-            :key="preset.id"
-            :unelevated="presetActivo === preset.id"
-            :outline="presetActivo !== preset.id"
-            dense
-            no-caps
-            size="sm"
-            color="primary"
-            :label="preset.label"
-            @click="aplicarPresetPeriodo(preset.id)"
-          />
-        </div>
-        <span class="text-caption muted tabular-nums">
-          {{ alcanceTexto }} · Evaluables:
-          <strong class="text-ink">{{ resumenMetricas.total_evaluables }}</strong>
-        </span>
+    <!-- 🛡️ [FASE 3.6 - DASHBOARD HÍBRIDO A] Selector mensual SQL (1 mes) + 4 tarjetas ejecutivas con íconos -->
+    <q-card flat bordered class="modern-card corte-mensual-shell q-mb-md">
+      <div class="corte-selector-zone">
+        <span class="corte-selector-label">Período del corte</span>
+        <SelectorMesCalendario
+          :anio-seleccionado="anioSeleccionado"
+          :mes-seleccionado="mesSeleccionado"
+          :anio-actual-sistema="anioActualSistema"
+          :mes-actual-sistema="mesActualSistema"
+          :es-mes-actual="esMesActual"
+          @seleccionar-mes="seleccionarMesAnio"
+          @desplazar-mes="desplazarMes"
+          @ir-mes-actual="irAlMesActual"
+        />
       </div>
 
-      <div class="row q-col-gutter-sm items-center">
-        <div class="col-12 col-sm-4 col-md-3">
-          <q-input
-            v-model="filtrosPeriodo.fecha_desde"
-            type="date"
-            outlined
-            dense
-            label="Desde"
-            @update:model-value="presetActivo = 'custom'"
-          />
+      <div class="corte-divider" aria-hidden="true" />
+
+      <div class="corte-cards-grid">
+        <div class="corte-card">
+          <div class="corte-card__info min-w-0">
+            <span class="corte-card__kicker">Alcance del Corte</span>
+            <strong class="corte-card__val text-primary tabular-nums ellipsis">
+              {{ alcanceCorto }} · {{ resumenMetricas.total_evaluables }}
+            </strong>
+            <span class="corte-card__sub tabular-nums">
+              Evaluables · {{ rangoMesCorto }}
+            </span>
+          </div>
+          <div class="corte-icon corte-icon--info">
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="9" />
+              <path d="M3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+            </svg>
+          </div>
         </div>
-        <div class="col-12 col-sm-4 col-md-3">
-          <q-input
-            v-model="filtrosPeriodo.fecha_hasta"
-            type="date"
-            outlined
-            dense
-            label="Hasta"
-            @update:model-value="presetActivo = 'custom'"
-          />
+
+        <div class="corte-card">
+          <div class="corte-card__info min-w-0">
+            <span class="corte-card__kicker">SLA Asignación</span>
+            <strong class="corte-card__val text-primary tabular-nums">
+              {{ resumenMetricas.pct_sla_asignacion }}%
+            </strong>
+            <span class="corte-card__sub tabular-nums">
+              Promedio: {{ formatearMinutos(resumenMetricas.promedio_asignacion_minutos) }}
+            </span>
+          </div>
+          <div class="corte-icon corte-icon--primary">
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="13" r="8" />
+              <path d="M12 9v4l2.5 1.5M9 2h6M12 2v3" />
+            </svg>
+          </div>
         </div>
-        <div class="col-12 col-sm-4 col-md-2">
-          <q-btn
-            unelevated
-            no-caps
-            color="primary"
-            icon="filter_alt"
-            label="Aplicar"
-            class="full-width"
-            :loading="cargandoMetricas"
-            @click="recargarDatos"
-          />
+
+        <div class="corte-card">
+          <div class="corte-card__info min-w-0">
+            <span class="corte-card__kicker">SLA Resolución</span>
+            <strong class="corte-card__val text-positive tabular-nums">
+              {{ resumenMetricas.pct_sla_resolucion }}%
+            </strong>
+            <span class="corte-card__sub tabular-nums">
+              Efectivo: {{ formatearMinutos(resumenMetricas.promedio_efectivo_minutos) }}
+            </span>
+          </div>
+          <div class="corte-icon corte-icon--success">
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.1"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+          </div>
         </div>
-        <div class="col-12 col-md-4">
-          <div class="relojes-resumen">
-            <div class="reloj-item">
-              <span class="reloj-item__label">SLA Asig.</span>
-              <strong class="reloj-item__val text-primary tabular-nums">
-                {{ resumenMetricas.pct_sla_asignacion }}%
-              </strong>
-              <span class="reloj-item__sub tabular-nums">
-                {{ formatearMinutos(resumenMetricas.promedio_asignacion_minutos) }}
-              </span>
-            </div>
-            <div class="reloj-item">
-              <span class="reloj-item__label">SLA Resol.</span>
-              <strong class="reloj-item__val text-positive tabular-nums">
-                {{ resumenMetricas.pct_sla_resolucion }}%
-              </strong>
-              <span class="reloj-item__sub tabular-nums">
-                {{ formatearMinutos(resumenMetricas.promedio_efectivo_minutos) }}
-              </span>
-            </div>
-            <div class="reloj-item">
-              <span class="reloj-item__label">Pausa Prom.</span>
-              <strong class="reloj-item__val text-warning tabular-nums">
-                {{ formatearMinutos(resumenMetricas.promedio_pausa_minutos) }}
-              </strong>
-              <span class="reloj-item__sub tabular-nums">
-                Supl.: {{ resumenMetricas.gobernanza.total_suplencias }}
-              </span>
-            </div>
+
+        <div class="corte-card">
+          <div class="corte-card__info min-w-0">
+            <span class="corte-card__kicker">Pausa Promedio</span>
+            <strong class="corte-card__val text-warning tabular-nums">
+              {{ formatearMinutos(resumenMetricas.promedio_pausa_minutos) }}
+            </strong>
+            <span class="corte-card__sub tabular-nums">
+              Suplencias: {{ resumenMetricas.gobernanza.total_suplencias }}
+            </span>
+          </div>
+          <div class="corte-icon corte-icon--warning">
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="9" />
+              <line x1="10" y1="9" x2="10" y2="15" />
+              <line x1="14" y1="9" x2="14" y2="15" />
+            </svg>
           </div>
         </div>
       </div>
@@ -1162,12 +1206,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
 import PrioridadBadge from '@/components/common/PrioridadBadge.vue';
+import SelectorMesCalendario from '@/components/common/SelectorMesCalendario.vue';
 import TicketDetalleDialog from '@/components/tickets/TicketDetalleDialog.vue';
-import { ESTADO_CLASS } from '@/composables/useTickets';
+import {
+  ESTADO_CLASS,
+  NOMBRES_MESES_CORTOS,
+  calcularRangoMesCalendario,
+} from '@/composables/useTickets';
 import type {
   EstadoTicket,
   MetricaTicketReal,
@@ -1179,16 +1228,6 @@ import { useConfiguracionesStore } from '@/stores/useConfiguracionesStore';
 import { esDepartamentoTI, useDepartmentsStore } from '@/stores/useDepartmentsStore';
 import { ESTADOS_ACTIVOS_TECNICO, useTicketStore } from '@/stores/ticketStore';
 import { formatearHora12 } from '@/utils/formatFecha';
-
-type PresetPeriodo = 'todo' | 'mes' | '30d' | '60d' | '90d' | 'custom';
-
-const PRESETS_PERIODO: ReadonlyArray<{ id: Exclude<PresetPeriodo, 'custom'>; label: string }> = [
-  { id: 'todo', label: 'Todo' },
-  { id: 'mes', label: 'Mes actual' },
-  { id: '30d', label: '30 días' },
-  { id: '60d', label: '60 días' },
-  { id: '90d', label: '90 días' },
-];
 
 const RESUMEN_METRICAS_VACIO: MetricasResumenOperativo = {
   total_tickets: 0,
@@ -1305,14 +1344,29 @@ const kpiSeleccionadoIdx = ref(0);
 const ticketSeleccionado = ref<Ticket | null>(null);
 const dialogoAbierto = ref(false);
 
-const presetActivo = ref<PresetPeriodo>('todo');
+const ahoraSistema = new Date();
+const anioActualSistema = ahoraSistema.getFullYear();
+const mesActualSistema = ahoraSistema.getMonth();
+
+// 🛡️ [FASE 3.6 - DASHBOARD MENSUAL] Corte mensual obligatorio para evitar descargas históricas sin límite
+const anioSeleccionado = ref<number>(anioActualSistema);
+const mesSeleccionado = ref<number>(mesActualSistema);
+
+const esMesActual = computed(
+  () =>
+    anioSeleccionado.value === anioActualSistema &&
+    mesSeleccionado.value === mesActualSistema,
+);
+
+const rangoMesCorto = computed(() => {
+  const ultimoDia = new Date(anioSeleccionado.value, mesSeleccionado.value + 1, 0).getDate();
+  const mesCorto = NOMBRES_MESES_CORTOS[mesSeleccionado.value] ?? '';
+  return `01–${String(ultimoDia).padStart(2, '0')} ${mesCorto} ${anioSeleccionado.value}`;
+});
+
 const cargandoMetricas = ref(false);
 const resumenMetricas = ref<MetricasResumenOperativo>(RESUMEN_METRICAS_VACIO);
 const ticketsMetricas = ref<MetricaTicketReal[]>([]);
-const filtrosPeriodo = reactive<{ fecha_desde: string; fecha_hasta: string }>({
-  fecha_desde: '',
-  fecha_hasta: '',
-});
 
 const metricaPorTicketId = computed<Map<number, MetricaTicketReal>>(() => {
   const mapa = new Map<number, MetricaTicketReal>();
@@ -1322,28 +1376,35 @@ const metricaPorTicketId = computed<Map<number, MetricaTicketReal>>(() => {
   return mapa;
 });
 
-function formatoFechaInput(fecha: Date): string {
-  const y = fecha.getFullYear();
-  const m = String(fecha.getMonth() + 1).padStart(2, '0');
-  const d = String(fecha.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+function seleccionarMesAnio(anio: number, mesIndex: number): void {
+  if (
+    anio > anioActualSistema ||
+    (anio === anioActualSistema && mesIndex > mesActualSistema)
+  ) {
+    return;
+  }
+  anioSeleccionado.value = anio;
+  mesSeleccionado.value = mesIndex;
+  void recargarDatos();
 }
 
-function aplicarPresetPeriodo(preset: Exclude<PresetPeriodo, 'custom'>): void {
-  presetActivo.value = preset;
-  const hoy = new Date();
-  if (preset === 'todo') {
-    filtrosPeriodo.fecha_desde = '';
-    filtrosPeriodo.fecha_hasta = '';
-  } else if (preset === 'mes') {
-    filtrosPeriodo.fecha_desde = formatoFechaInput(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
-    filtrosPeriodo.fecha_hasta = formatoFechaInput(hoy);
-  } else {
-    const dias = preset === '30d' ? 30 : preset === '60d' ? 60 : 90;
-    filtrosPeriodo.fecha_desde = formatoFechaInput(new Date(hoy.getTime() - dias * 86400000));
-    filtrosPeriodo.fecha_hasta = formatoFechaInput(hoy);
+function desplazarMes(delta: -1 | 1): void {
+  let nuevoMes = mesSeleccionado.value + delta;
+  let nuevoAnio = anioSeleccionado.value;
+
+  if (nuevoMes < 0) {
+    nuevoMes = 11;
+    nuevoAnio -= 1;
+  } else if (nuevoMes > 11) {
+    nuevoMes = 0;
+    nuevoAnio += 1;
   }
-  void recargarDatos();
+
+  seleccionarMesAnio(nuevoAnio, nuevoMes);
+}
+
+function irAlMesActual(): void {
+  seleccionarMesAnio(anioActualSistema, mesActualSistema);
 }
 
 function formatearMinutos(minutos: number): string {
@@ -1355,7 +1416,7 @@ function formatearMinutos(minutos: number): string {
 }
 
 const rol = computed(() => authStore.role);
-const cargando = computed(() => ticketStore.cargando);
+const cargando = computed(() => ticketStore.cargando || cargandoMetricas.value);
 const errorCarga = computed(() => ticketStore.errorCarga);
 
 const puedeCrearTicket = computed(
@@ -1392,7 +1453,26 @@ const alcanceTexto = computed(() => {
     case 'TECNICO':
       return `Alcance: Cola Personal (${authStore.usuario?.nombre ?? 'Técnico'})`;
     default:
-      return 'Alcance: Mis Solicitudes';
+      return 'Alcance: Global TI';
+  }
+});
+
+const alcanceCorto = computed(() => {
+  switch (rol.value) {
+    case 'MESA_TECNICA':
+    case 'ADMINISTRADOR':
+    case 'DIRECTOR':
+      return 'Global TI';
+    case 'GERENTE_AREA': {
+      const dptoNombre = departmentsStore.departments.find(
+        (d) => d.id === authStore.usuario?.id_departamento,
+      )?.nombre;
+      return dptoNombre ?? 'Mi Sub-Gerencia';
+    }
+    case 'TECNICO':
+      return authStore.usuario?.nombre ?? 'Cola Personal';
+    default:
+      return 'Global TI';
   }
 });
 
@@ -1402,12 +1482,20 @@ const rutaBandejaRol = computed(() => {
       return '/gerencia/bandeja';
     case 'TECNICO':
       return '/tecnico/mis-tickets';
-    case 'USUARIO':
-      return '/usuario/mis-solicitudes';
     default:
       return '/tickets/recepcion';
   }
 });
+
+const destinoBandejaRol = computed(() => ({
+  path: rutaBandejaRol.value,
+  query: esMesActual.value
+    ? {}
+    : {
+        anio: String(anioSeleccionado.value),
+        mes: String(mesSeleccionado.value),
+      },
+}));
 
 const etiquetaBotonBandeja = computed(() => {
   switch (rol.value) {
@@ -1975,25 +2063,41 @@ function abrirDetalleTicket(ticket: Ticket): void {
   dialogoAbierto.value = true;
 }
 
+function queryMesSeleccionado(): Record<string, string> {
+  if (esMesActual.value) return {};
+  return {
+    anio: String(anioSeleccionado.value),
+    mes: String(mesSeleccionado.value),
+  };
+}
+
 function irABandejaConEstado(estado?: EstadoTicket): void {
   void router.push({
     path: rutaBandejaRol.value,
-    query: estado ? { estado } : {},
+    query: {
+      ...queryMesSeleccionado(),
+      ...(estado ? { estado } : {}),
+    },
   });
 }
 
 function irABandejaConTexto(texto: string): void {
   void router.push({
     path: rutaBandejaRol.value,
-    query: { busqueda: texto },
+    query: {
+      ...queryMesSeleccionado(),
+      busqueda: texto,
+    },
   });
 }
 
 async function recargarDatos(): Promise<void> {
+  if (!authStore.isAuthenticated) return;
   cargandoMetricas.value = true;
+  const rango = calcularRangoMesCalendario(anioSeleccionado.value, mesSeleccionado.value);
   const queryFechas = {
-    ...(filtrosPeriodo.fecha_desde ? { fecha_desde: filtrosPeriodo.fecha_desde } : {}),
-    ...(filtrosPeriodo.fecha_hasta ? { fecha_hasta: filtrosPeriodo.fecha_hasta } : {}),
+    fecha_desde: rango.desde,
+    fecha_hasta: rango.hasta,
   };
 
   const tareas: Promise<unknown>[] = [
@@ -2012,7 +2116,7 @@ async function recargarDatos(): Promise<void> {
       }),
   ];
 
-  if (['ADMINISTRADOR', 'MESA_TECNICA', 'DIRECTOR', 'GERENTE_AREA'].includes(rol.value)) {
+  if (rol.value && ['ADMINISTRADOR', 'MESA_TECNICA', 'DIRECTOR', 'GERENTE_AREA'].includes(rol.value)) {
     tareas.push(ticketStore.cargarTecnicosDisponibles().catch(() => []));
   }
 
@@ -2026,6 +2130,7 @@ async function recargarDatos(): Promise<void> {
 watch(
   () => authStore.role,
   (nuevoRol) => {
+    if (!authStore.isAuthenticated) return;
     kpiSeleccionadoIdx.value = 0;
     if (nuevoRol === 'DIRECTOR' && tabActiva.value === 'suplencia') {
       tabActiva.value = 'matriz';
@@ -2056,25 +2161,66 @@ onMounted(() => {
   min-width: 0;
 }
 
-.relojes-resumen {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+// 🛡️ [FASE 3.6 - DASHBOARD HÍBRIDO A] Tarjeta única: Selector mensual + 4 mini-tarjetas con íconos
+.corte-mensual-shell {
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
-.reloj-item {
-  background: var(--surface-bg);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 6px 8px;
+.corte-selector-zone {
   display: flex;
   flex-direction: column;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.corte-selector-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.corte-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border-subtle);
+}
+
+.corte-cards-grid {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.corte-card {
+  background: var(--surface-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 9px 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   min-width: 0;
 
-  &__label {
-    font-size: 0.66rem;
+  &__info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  &__kicker {
+    font-size: 0.64rem;
     font-weight: 700;
     text-transform: uppercase;
+    letter-spacing: 0.05em;
     color: var(--text-muted);
     white-space: nowrap;
     overflow: hidden;
@@ -2082,17 +2228,67 @@ onMounted(() => {
   }
 
   &__val {
-    font-size: 0.92rem;
-    line-height: 1.2;
+    font-size: 1.02rem;
+    font-weight: 700;
+    line-height: 1.25;
     margin-top: 2px;
+    white-space: nowrap;
   }
 
   &__sub {
-    font-size: 0.68rem;
+    font-size: 0.69rem;
     color: var(--text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+}
+
+.corte-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &--info {
+    background: var(--info-soft);
+    color: var(--info);
+  }
+
+  &--primary {
+    background: var(--brand-primary-soft);
+    color: var(--brand-ink);
+  }
+
+  &--success {
+    background: var(--success-soft);
+    color: var(--success);
+  }
+
+  &--warning {
+    background: var(--warning-soft);
+    color: var(--warning);
+  }
+}
+
+@media (max-width: 1080px) {
+  .corte-divider {
+    display: none;
+  }
+
+  .corte-cards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 599px) {
+  .corte-cards-grid {
+    grid-template-columns: 1fr;
   }
 }
 

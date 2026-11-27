@@ -36,7 +36,19 @@ export const api = axios.create({
 
 // Estado del proceso de Silent Refresh y cola de peticiones concurrentes
 let isRefreshing = false;
+let cierreSesionEnCurso = false;
 let colaPeticionesPendientes: PeticionEncolada[] = [];
+
+/**
+ * Marca si hay un cierre de sesión voluntario en curso para suprimir intentos de Silent Refresh
+ * ante respuestas `401` de peticiones previas que sigan en vuelo.
+ */
+export function establecerCierreSesionEnCurso(activo: boolean): void {
+  cierreSesionEnCurso = activo;
+  if (activo && colaPeticionesPendientes.length > 0) {
+    procesarColaPendiente(new Error('Sesión cerrada por el usuario.'));
+  }
+}
 
 function procesarColaPendiente(error: unknown): void {
   const copiaCola = [...colaPeticionesPendientes];
@@ -72,7 +84,12 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const codigoError = error.response?.data?.code;
 
-    if (!peticionOriginal || status !== 401 || esRutaExcluidaDeRefresh(peticionOriginal.url)) {
+    if (
+      !peticionOriginal ||
+      status !== 401 ||
+      cierreSesionEnCurso ||
+      esRutaExcluidaDeRefresh(peticionOriginal.url)
+    ) {
       return Promise.reject(error);
     }
 

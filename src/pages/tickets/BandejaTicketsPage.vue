@@ -44,18 +44,32 @@
       <TicketsToolbar
         v-model:busqueda="busqueda"
         v-model:estados-filtro="estadosFiltro"
+        v-model:id-departamento-filtro="idDepartamentoFiltro"
+        v-model:id-tecnico-filtro="idTecnicoFiltro"
+        :anio-seleccionado="anioSeleccionado"
+        :mes-seleccionado="mesSeleccionado"
+        :anio-actual-sistema="anioActualSistema"
+        :mes-actual-sistema="mesActualSistema"
+        :es-mes-actual="esMesActual"
+        :mostrar-filtro-departamento="mostrarFiltroDepartamento"
+        :mostrar-filtro-tecnico="mostrarFiltroTecnico"
+        :opciones-departamentos-ti="opcionesDepartamentosTi"
+        :opciones-tecnicos-filtro="opcionesTecnicosFiltro"
         :estados-disponibles="estadosDisponibles"
-        :total-resultados="ticketsFiltrados.length"
+        :total-resultados="totalResultados"
+        @seleccionar-mes="seleccionarMesAnio"
+        @desplazar-mes="desplazarMes"
+        @ir-mes-actual="irAlMesActual"
         @limpiar="limpiarFiltros"
       />
 
       <q-table
         flat
-        v-model:pagination="paginacion"
+        v-model:pagination="paginacionTabla"
         class="modern-table tabla-bandeja"
         :rows="ticketsFiltrados"
         :columns="columns"
-        :rows-per-page-options="OPCIONES_FILAS_POR_PAGINA_TICKETS"
+        :rows-per-page-options="[0]"
         row-key="id"
         :loading="cargando"
         :grid="$q.screen.lt.md"
@@ -269,6 +283,7 @@ import {
 } from '@/composables/useTickets';
 import type { EstadoTicket, Ticket } from '@/models/types';
 import { useAuthStore } from '@/stores/authStore';
+import { useTicketStore } from '@/stores/ticketStore';
 import {
   formatearFechaCorta as formatFechaCorta,
   formatearHora12,
@@ -278,6 +293,7 @@ const $q = useQuasar();
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
+const ticketStore = useTicketStore();
 
 const OPCIONES_FILAS_POR_PAGINA_TICKETS: number[] = [3, 5, 10, 15, 20];
 
@@ -286,11 +302,30 @@ const modoRuta = computed(() => route.meta.modoBandeja as string | undefined);
 const {
   busqueda,
   estadosFiltro,
+  idDepartamentoFiltro,
+  idTecnicoFiltro,
+  anioSeleccionado,
+  mesSeleccionado,
+  anioActualSistema,
+  mesActualSistema,
+  esMesActual,
+  paginaActual,
+  filasPorPagina,
+  totalResultados,
+  totalPaginas,
+  textoMostrando,
+  mostrarFiltroDepartamento,
+  mostrarFiltroTecnico,
+  opcionesDepartamentosTi,
+  opcionesTecnicosFiltro,
   estadosDisponibles,
   ticketsFiltrados,
   cargando,
   errorCarga,
   limpiarFiltros,
+  seleccionarMesAnio,
+  desplazarMes,
+  irAlMesActual,
   recargarTickets,
 } = useTickets(modoRuta);
 
@@ -304,7 +339,6 @@ const puedeCrearTicket = computed(
 );
 
 const tituloBandeja = computed(() => {
-  if (modoRuta.value === 'cierre') return 'Verificación y Cierre de Tickets';
   switch (authStore.role) {
     case 'TECNICO':
       return 'Mi Cola de Trabajo';
@@ -312,17 +346,12 @@ const tituloBandeja = computed(() => {
       return 'Bandeja de Área';
     case 'MESA_TECNICA':
       return 'Recepción Global de Tickets';
-    case 'USUARIO':
-      return 'Mis Solicitudes de Soporte';
     default:
       return 'Gestión Global de Tickets';
   }
 });
 
 const subtituloBandeja = computed(() => {
-  if (modoRuta.value === 'cierre') {
-    return 'Tickets resueltos por los especialistas pendientes de validación y cierre definitivo.';
-  }
   switch (authStore.role) {
     case 'TECNICO':
       return 'Incidencias asignadas a tu bandeja con su prioridad SLA y estado actual.';
@@ -330,8 +359,6 @@ const subtituloBandeja = computed(() => {
       return 'Incidencias pertenecientes a tu departamento técnico listas para asignación y seguimiento.';
     case 'MESA_TECNICA':
       return 'Control centralizado de incidencias, asignación en suplencia y cierre con usuario.';
-    case 'USUARIO':
-      return 'Seguimiento en tiempo real del estado de tus incidencias reportadas.';
     default:
       return 'Visión general de incidencias registradas en el sistema HelpDesk TI.';
   }
@@ -346,39 +373,70 @@ function abrirDetalle(
   dialogoAbierto.value = true;
 }
 
+// 🛡️ [FIX REACTIVIDAD / FASE 3.6] Consume query params de filtro (`estado`, `busqueda`, `anio`, `mes`)
+// separados del deep-link por `folio` para sincronizar el mes elegido en Dashboard sin bucles reactivos.
 watch(
   [
-    () => route.query.folio,
     () => route.query.estado,
     () => route.query.busqueda,
-    () => ticketsFiltrados.value,
+    () => route.query.anio,
+    () => route.query.mes,
   ],
-  ([folioParam, estadoParam, busquedaParam]) => {
+  ([estadoParam, busquedaParam, anioParam, mesParam]) => {
+    let consumioQuery = false;
+
+    if (typeof anioParam === 'string' && typeof mesParam === 'string') {
+      const anioNum = Number(anioParam);
+      const mesNum = Number(mesParam);
+      if (
+        Number.isInteger(anioNum) &&
+        Number.isInteger(mesNum) &&
+        mesNum >= 0 &&
+        mesNum <= 11
+      ) {
+        if (anioNum !== anioSeleccionado.value || mesNum !== mesSeleccionado.value) {
+          seleccionarMesAnio(anioNum, mesNum);
+        }
+        consumioQuery = true;
+      }
+    }
+
     if (typeof estadoParam === 'string' && estadoParam.trim()) {
       const est = estadoParam.trim() as EstadoTicket;
       if (estadosDisponibles.includes(est)) {
         estadosFiltro.value = [est];
       }
-      void router.replace({ path: route.path });
-      return;
-    }
-
-    if (typeof busquedaParam === 'string' && busquedaParam.trim()) {
+      consumioQuery = true;
+    } else if (typeof busquedaParam === 'string' && busquedaParam.trim()) {
       busqueda.value = busquedaParam.trim();
       estadosFiltro.value = [];
-      void router.replace({ path: route.path });
-      return;
+      consumioQuery = true;
     }
 
-    const folioBuscado = typeof folioParam === 'string' ? folioParam.trim().toUpperCase() : '';
-    if (!folioBuscado || folioQueryProcesado.value === folioBuscado) return;
+    if (consumioQuery) {
+      void router.replace({ path: route.path });
+    }
+  },
+  { immediate: true },
+);
 
-    const match = ticketsFiltrados.value.find(
-      (t) => t.folio.trim().toUpperCase() === folioBuscado,
-    );
-    if (!match) return;
+watch(
+  () => route.query.folio,
+  async (folioParam) => {
+    const folioBuscado = typeof folioParam === 'string' ? folioParam.trim().toUpperCase() : '';
+    if (!folioBuscado) {
+      folioQueryProcesado.value = null;
+      return;
+    }
+    if (folioQueryProcesado.value === folioBuscado) return;
 
     folioQueryProcesado.value = folioBuscado;
+    const matchLocal = ticketsFiltrados.value.find(
+      (t) => t.folio.trim().toUpperCase() === folioBuscado,
+    );
+    const match = matchLocal ?? (await ticketStore.buscarTicketPorFolio(folioBuscado));
+    if (!match) return;
+
     busqueda.value = folioBuscado;
     const tab = route.query.tab === 'adjuntos' ? 'adjuntos' : 'resumen';
     abrirDetalle(match, tab);
@@ -387,48 +445,12 @@ watch(
   { immediate: true },
 );
 
-// 🛡️ [FASE 3 - UI BANDEJA] Paginación de 3 zonas reactiva consistente con Configuraciones
-const paginacion = ref<NonNullable<QTableProps['pagination']>>({
+// 🛡️ [FASE 4.2 - ESCALABILIDAD] La paginación corre en PostgreSQL; q-table muestra completa la página recibida
+const paginacionTabla = ref<NonNullable<QTableProps['pagination']>>({
   sortBy: null,
   descending: false,
   page: 1,
-  rowsPerPage: 5,
-});
-
-const filasPorPagina = computed({
-  get: () => paginacion.value.rowsPerPage ?? 5,
-  set: (val: number) => {
-    paginacion.value = { ...paginacion.value, rowsPerPage: val, page: 1 };
-  },
-});
-
-const paginaActual = computed({
-  get: () => paginacion.value.page ?? 1,
-  set: (val: number) => {
-    paginacion.value = { ...paginacion.value, page: val };
-  },
-});
-
-const totalPaginas = computed(() =>
-  Math.max(1, Math.ceil(ticketsFiltrados.value.length / filasPorPagina.value)),
-);
-
-const textoMostrando = computed(() => {
-  const total = ticketsFiltrados.value.length;
-  if (total === 0) return 'Mostrando 0 de 0 tickets';
-  const inicio = (paginaActual.value - 1) * filasPorPagina.value + 1;
-  const fin = Math.min(paginaActual.value * filasPorPagina.value, total);
-  return `Mostrando ${inicio}–${fin} de ${total} tickets`;
-});
-
-watch([busqueda, estadosFiltro], () => {
-  paginaActual.value = 1;
-});
-
-watch(totalPaginas, (nuevoMax) => {
-  if (paginaActual.value > nuevoMax) {
-    paginaActual.value = nuevoMax;
-  }
+  rowsPerPage: 0,
 });
 
 function formatearFechaCorta(iso: string): string {

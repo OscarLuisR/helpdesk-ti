@@ -5,7 +5,6 @@ import type { RolUsuario } from '@/models/types';
 import { useAuthStore } from '@/stores/authStore';
 
 const ETIQUETA_ROL: Record<RolUsuario, string> = {
-  USUARIO: 'Usuario (Solicitante)',
   MESA_TECNICA: 'Mesa Técnica',
   GERENTE_AREA: 'Gerente de Área',
   TECNICO: 'Técnico',
@@ -68,17 +67,8 @@ export const OPCIONES_ADMINISTRATIVAS: readonly MenuItem[] = [
   },
 ];
 
-/** Mapa estricto de opciones del menú lateral según los 6 roles del sistema. */
+/** Mapa estricto de opciones del menú lateral según los 5 roles operativos TI del sistema. */
 export const MENU_POR_ROL: Record<RolUsuario, readonly MenuItem[]> = {
-  USUARIO: [
-    {
-      id: 'usuario-solicitudes',
-      titulo: 'Mis Solicitudes / Validación',
-      icono: 'fact_check',
-      ruta: '/usuario/mis-solicitudes',
-    },
-  ],
-
   MESA_TECNICA: [
     {
       id: 'mesa-dashboard',
@@ -100,10 +90,10 @@ export const MENU_POR_ROL: Record<RolUsuario, readonly MenuItem[]> = {
       ruta: '/tickets/recepcion',
     },
     {
-      id: 'tickets-cierre',
-      titulo: 'Verificación y Cierre',
-      icono: 'task_alt',
-      ruta: '/tickets/cierre',
+      id: 'mesa-historial',
+      titulo: 'Base de Soluciones',
+      icono: 'menu_book',
+      ruta: '/tecnico/historial',
     },
     // 🛡️ [FASE 3.5 - VISTAS] Acceso directo a Reportes y SLAs para Mesa Técnica
     {
@@ -217,7 +207,7 @@ export function useNavigation() {
   const $q = useQuasar();
 
   const itemsMenu = computed<readonly MenuItem[]>(() => {
-    return MENU_POR_ROL[authStore.role] ?? [];
+    return authStore.role ? (MENU_POR_ROL[authStore.role] ?? []) : [];
   });
 
   const rutaActiva = ref<string>(route.path);
@@ -237,6 +227,7 @@ export function useNavigation() {
   watch(
     () => authStore.role,
     (nuevoRol) => {
+      if (!nuevoRol || !authStore.isAuthenticated) return;
       const opciones = MENU_POR_ROL[nuevoRol] ?? [];
       const primeraExistente = opciones.find((op) => rutaRegistradaEnRouter(op.ruta));
       const destino = primeraExistente ?? opciones[0];
@@ -260,7 +251,8 @@ export function useNavigation() {
   });
 
   const etiquetaRolActual = computed(
-    () => authStore.usuario?.rolNombre || ETIQUETA_ROL[authStore.role] || authStore.role,
+    () =>
+      authStore.usuario?.rolNombre || (authStore.role ? ETIQUETA_ROL[authStore.role] : '') || '',
   );
 
   function esRutaActiva(ruta: string): boolean {

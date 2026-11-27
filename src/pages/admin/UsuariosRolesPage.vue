@@ -7,10 +7,21 @@
           Administración · Cuentas
         </span>
         <h1 class="page-title">Usuarios</h1>
-        <p class="page-subtitle">Gestión de cuentas corporativas, departamentos y asignación de perfiles del sistema.</p>
+        <p class="page-subtitle">
+          Gestión de cuentas corporativas, departamentos y asignación de perfiles del sistema.
+        </p>
       </div>
       <div class="col-12 col-sm-auto">
-        <q-btn color="primary" icon="add" label="Nuevo Usuario" unelevated no-caps class="btn-nuevo" :class="{ 'full-width': $q.screen.xs }" @click="abrirModalCrear" />
+        <q-btn
+          color="primary"
+          icon="add"
+          label="Nuevo Usuario"
+          unelevated
+          no-caps
+          class="btn-nuevo"
+          :class="{ 'full-width': $q.screen.xs }"
+          @click="abrirModalCrear"
+        />
       </div>
     </div>
 
@@ -18,15 +29,38 @@
       <div class="toolbar-section q-pa-md">
         <div class="row items-center q-col-gutter-sm">
           <div class="col-12 col-sm-6 col-md-5">
-            <q-input v-model="busqueda" debounce="300" dense outlined clearable placeholder="Buscar por nombre, usuario, correo o teléfono...">
+            <q-input
+              v-model="busqueda"
+              debounce="300"
+              dense
+              outlined
+              clearable
+              placeholder="Buscar por nombre, usuario, correo o teléfono..."
+            >
               <template #prepend><q-icon name="search" class="muted" /></template>
             </q-input>
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <q-select v-model="filtroRol" :options="opcionesFiltroRol" option-value="valor" option-label="etiqueta" emit-value map-options dense outlined options-dense />
+            <q-select
+              v-model="filtroRol"
+              :options="opcionesFiltroRol"
+              option-value="valor"
+              option-label="etiqueta"
+              emit-value
+              map-options
+              dense
+              outlined
+              options-dense
+            />
           </div>
           <div class="col-12 col-sm-12 col-md-3">
-            <q-select v-model="filtroEstado" :options="OPCIONES_FILTRO_ESTADO" dense outlined options-dense />
+            <q-select
+              v-model="filtroEstado"
+              :options="OPCIONES_FILTRO_ESTADO"
+              dense
+              outlined
+              options-dense
+            />
           </div>
         </div>
       </div>
@@ -50,12 +84,20 @@
               <div>
                 <div class="row items-start justify-between no-wrap q-gutter-x-sm q-mb-xs">
                   <div class="row items-center no-wrap min-w-0 col">
-                    <q-avatar size="30px" class="q-mr-sm avatar-iniciales shrink-0" :style="avatarSolicitanteStyle(props.row.nombre_completo)">
+                    <q-avatar
+                      size="30px"
+                      class="q-mr-sm avatar-iniciales shrink-0"
+                      :style="avatarSolicitanteStyle(props.row.nombre_completo)"
+                    >
                       {{ inicialesSolicitante(props.row.nombre_completo) }}
                     </q-avatar>
                     <div class="min-w-0 col">
-                      <div class="text-weight-bold text-ink usuario-nombre-texto">{{ props.row.nombre_completo }}</div>
-                      <div class="text-caption muted texto-break-anywhere">{{ props.row.nick }} · #{{ props.row.id }}</div>
+                      <div class="text-weight-bold text-ink usuario-nombre-texto">
+                        {{ props.row.nombre_completo }}
+                      </div>
+                      <div class="text-caption muted texto-break-anywhere">
+                        {{ props.row.nick }} · #{{ props.row.id }}
+                      </div>
                     </div>
                   </div>
                   <span class="chip shrink-0" :class="estadoChipClass(props.row.estado)">
@@ -108,11 +150,15 @@
                     :color="props.row.estado === 'Activo' ? 'negative' : 'positive'"
                     :icon="props.row.estado === 'Activo' ? 'block' : 'check_circle_outline'"
                     size="sm"
-                    :aria-label="props.row.estado === 'Activo' ? 'Desactivar usuario' : 'Activar usuario'"
+                    :aria-label="
+                      props.row.estado === 'Activo' ? 'Desactivar usuario' : 'Activar usuario'
+                    "
                     class="btn-accion-icono"
                     @click="alternarEstado(props.row)"
                   >
-                    <q-tooltip>{{ props.row.estado === 'Activo' ? 'Desactivar' : 'Activar' }}</q-tooltip>
+                    <q-tooltip>{{
+                      props.row.estado === 'Activo' ? 'Desactivar' : 'Activar'
+                    }}</q-tooltip>
                   </q-btn>
                 </div>
               </div>
@@ -128,12 +174,20 @@
         <template #body-cell-nombre="props">
           <q-td :props="props" class="celda-wrap">
             <div class="row items-start no-wrap">
-              <q-avatar size="30px" class="q-mr-sm avatar-iniciales shrink-0" :style="avatarSolicitanteStyle(props.row.nombre_completo)">
+              <q-avatar
+                size="30px"
+                class="q-mr-sm avatar-iniciales shrink-0"
+                :style="avatarSolicitanteStyle(props.row.nombre_completo)"
+              >
                 {{ inicialesSolicitante(props.row.nombre_completo) }}
               </q-avatar>
               <div class="column min-w-0 col">
-                <span class="text-weight-medium text-ink usuario-nombre-texto">{{ props.row.nombre_completo }}</span>
-                <span v-if="props.row.email" class="text-caption muted usuario-email">{{ props.row.email }}</span>
+                <span class="text-weight-medium text-ink usuario-nombre-texto">{{
+                  props.row.nombre_completo
+                }}</span>
+                <span v-if="props.row.email" class="text-caption muted usuario-email">{{
+                  props.row.email
+                }}</span>
               </div>
             </div>
           </q-td>
@@ -152,7 +206,9 @@
         </template>
         <template #body-cell-departamento="props">
           <q-td :props="props" class="celda-wrap">
-            <span class="text-caption text-weight-medium text-ink">{{ props.row.departamento }}</span>
+            <span class="text-caption text-weight-medium text-ink">{{
+              props.row.departamento
+            }}</span>
           </q-td>
         </template>
         <template #body-cell-rol="props">
@@ -203,11 +259,15 @@
                 :color="props.row.estado === 'Activo' ? 'negative' : 'positive'"
                 :icon="props.row.estado === 'Activo' ? 'block' : 'check_circle_outline'"
                 size="sm"
-                :aria-label="props.row.estado === 'Activo' ? 'Desactivar usuario' : 'Activar usuario'"
+                :aria-label="
+                  props.row.estado === 'Activo' ? 'Desactivar usuario' : 'Activar usuario'
+                "
                 class="btn-accion-icono"
                 @click="alternarEstado(props.row)"
               >
-                <q-tooltip>{{ props.row.estado === 'Activo' ? 'Desactivar' : 'Activar' }}</q-tooltip>
+                <q-tooltip>{{
+                  props.row.estado === 'Activo' ? 'Desactivar' : 'Activar'
+                }}</q-tooltip>
               </q-btn>
             </div>
           </q-td>

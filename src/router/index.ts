@@ -59,7 +59,7 @@ export default defineRouter(({ store }) => {
       auth.isAuthenticated &&
       rolesPermitidos &&
       rolesPermitidos.length > 0 &&
-      !rolesPermitidos.includes(auth.rolActual)
+      (!auth.rolActual || !rolesPermitidos.includes(auth.rolActual))
     ) {
       return rutaInicioPorRol(auth.rolActual);
     }

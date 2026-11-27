@@ -1,5 +1,4 @@
 export type RolUsuario =
-  | 'USUARIO'
   | 'MESA_TECNICA'
   | 'GERENTE_AREA'
   | 'TECNICO'
@@ -179,12 +178,20 @@ export interface TecnicoDisponible {
 export interface TicketFiltrosQuery {
   folio?: string;
   estado?: EstadoTicket;
+  // 🛡️ [FASE 4.2 - ESCALABILIDAD] Filtros y paginación real server-side
+  estados?: EstadoTicket[];
   id_tecnico?: number;
+  sin_asignar?: boolean;
   id_departamento_ti?: number;
   id_departamento_solicitante?: number;
   id_usuario_solicitante?: number;
   fecha_desde?: string;
   fecha_hasta?: string;
+  // 🛡️ [FASE 4.1 - ESCALABILIDAD] Excluye estados terminales en PostgreSQL
+  solo_activos?: boolean;
+  q?: string;
+  page?: number;
+  limit?: number;
 }
 
 // 🛡️ [FASE 2.4 - TICKETS] Contratos de Comentarios (chat) y Adjuntos
@@ -229,6 +236,8 @@ export interface MetricasFiltrosQuery {
   id_tecnico?: number;
   fecha_desde?: string;
   fecha_hasta?: string;
+  // 🛡️ [FASE 4.3 - ESCALABILIDAD] Omite `tickets[]` cuando solo se muestran agregados
+  incluir_detalle?: boolean;
 }
 
 export interface MetricaTicketReal {
@@ -353,6 +362,9 @@ export interface BaseSolucionesFiltrosQuery {
   id_catalogo?: number;
   id_departamento_ti?: number;
   limite?: number;
+  // 🛡️ [FASE 4.3 - ESCALABILIDAD] Paginación real server-side
+  page?: number;
+  limit?: number;
 }
 
 export interface BaseSolucionItem {

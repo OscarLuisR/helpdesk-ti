@@ -510,18 +510,27 @@ import {
   exportarListadoDetalladoCsv,
   exportarMatrizMensualTecnicosCsv,
 } from '@/utils/exportarReportes';
+import { ordenarPorTexto } from '@/utils/ordenarOpciones';
 
-type PresetId = 'mes' | '30d' | '60d' | '90d' | 'todo' | 'custom';
+type PresetId = 'mes' | '30d' | '60d' | '90d' | '365d' | 'custom';
 
 const OPCIONES_FILAS_POR_PAGINA_TECNICOS: number[] = [3, 5, 10, 15, 20];
 
+// 🛡️ [FASE 3.6 - ESCALABILIDAD] Presets acotados (máx. 365 días, alineado con el tope de 366 días del backend)
 const PRESETS_PERIODO: ReadonlyArray<{ id: Exclude<PresetId, 'custom'>; label: string }> = [
   { id: 'mes', label: 'Mes actual' },
   { id: '30d', label: 'Últimos 30 días' },
   { id: '60d', label: 'Últimos 60 días' },
   { id: '90d', label: 'Últimos 90 días' },
-  { id: 'todo', label: 'Todo el historial' },
+  { id: '365d', label: 'Último año (365 días)' },
 ];
+
+function formatoFechaInput(fecha: Date): string {
+  const y = fecha.getFullYear();
+  const m = String(fecha.getMonth() + 1).padStart(2, '0');
+  const d = String(fecha.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 const RESUMEN_VACIO: MetricasResumenOperativo = {
   total_tickets: 0,
@@ -557,19 +566,22 @@ const $q = useQuasar();
 const ticketStore = useTicketStore();
 const departmentsStore = useDepartmentsStore();
 
+const hoyInicial = new Date();
+const inicioMesInicial = new Date(hoyInicial.getFullYear(), hoyInicial.getMonth(), 1);
+
 const cargando = ref(false);
 const errorCarga = ref<string | null>(null);
 const resumen = ref<MetricasResumenOperativo>(RESUMEN_VACIO);
 const ticketsMetricas = ref<MetricaTicketReal[]>([]);
-const presetActivo = ref<PresetId>('todo');
+const presetActivo = ref<PresetId>('mes');
 
 const filtros = reactive<{
   fecha_desde: string;
   fecha_hasta: string;
   id_departamento_ti: number | null;
 }>({
-  fecha_desde: '',
-  fecha_hasta: '',
+  fecha_desde: formatoFechaInput(inicioMesInicial),
+  fecha_hasta: formatoFechaInput(hoyInicial),
   id_departamento_ti: null,
 });
 
@@ -621,32 +633,27 @@ function normalizar(valor: string | null | undefined): string {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
+// 🛡️ [FASE 3 - UI COMBOS] Sub-Gerencias TI ordenadas A-Z por nombre
 const areasTiActivas = computed(() =>
-  departmentsStore.departments.filter(
-    (d) => d.is_activo && normalizar(d.tipo_departamento) === 'SUB-GERENCIA TI',
+  ordenarPorTexto(
+    departmentsStore.departments.filter(
+      (d) => d.is_activo && normalizar(d.tipo_departamento) === 'SUB-GERENCIA TI',
+    ),
+    (d) => d.nombre,
   ),
 );
-
-function formatoFechaInput(fecha: Date): string {
-  const y = fecha.getFullYear();
-  const m = String(fecha.getMonth() + 1).padStart(2, '0');
-  const d = String(fecha.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
 
 function aplicarPreset(preset: Exclude<PresetId, 'custom'>): void {
   presetActivo.value = preset;
   const hoy = new Date();
 
-  if (preset === 'todo') {
-    filtros.fecha_desde = '';
-    filtros.fecha_hasta = '';
-  } else if (preset === 'mes') {
+  if (preset === 'mes') {
     const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
     filtros.fecha_desde = formatoFechaInput(inicioMes);
     filtros.fecha_hasta = formatoFechaInput(hoy);
   } else {
-    const dias = preset === '30d' ? 30 : preset === '60d' ? 60 : 90;
+    const dias =
+      preset === '30d' ? 30 : preset === '60d' ? 60 : preset === '90d' ? 90 : 365;
     const inicio = new Date(hoy.getTime() - dias * 86400000);
     filtros.fecha_desde = formatoFechaInput(inicio);
     filtros.fecha_hasta = formatoFechaInput(hoy);
@@ -888,7 +895,7 @@ const textoPeriodoExportacion = computed(() => {
   if (filtros.fecha_desde || filtros.fecha_hasta) {
     return `${filtros.fecha_desde || 'Inicio'} a ${filtros.fecha_hasta || 'Hoy'}`;
   }
-  return PRESETS_PERIODO.find((p) => p.id === presetActivo.value)?.label ?? 'Todo el historial';
+  return PRESETS_PERIODO.find((p) => p.id === presetActivo.value)?.label ?? 'Período seleccionado';
 });
 
 const textoAreaExportacion = computed(() => {
@@ -899,8 +906,36 @@ const textoAreaExportacion = computed(() => {
   );
 });
 
-function descargarCasosDetallados(): void {
-  if (!ticketsMetricas.value.length) {
+// 🛡️ [FASE 4.3 - ESCALABILIDAD] Descarga el detalle por ticket bajo demanda solo al exportar CSV
+async function obtenerDetalleParaExportacion(): Promise<MetricaTicketReal[]> {
+  if (ticketsMetricas.value.length > 0) return ticketsMetricas.value;
+  cargando.value = true;
+  try {
+    const resp = await ticketStore.cargarMetricas({
+      ...(filtros.fecha_desde ? { fecha_desde: filtros.fecha_desde } : {}),
+      ...(filtros.fecha_hasta ? { fecha_hasta: filtros.fecha_hasta } : {}),
+      ...(filtros.id_departamento_ti ? { id_departamento_ti: filtros.id_departamento_ti } : {}),
+      incluir_detalle: true,
+    });
+    ticketsMetricas.value = resp.tickets;
+    return resp.tickets;
+  } catch (err: unknown) {
+    $q.notify({
+      type: 'negative',
+      message:
+        err instanceof Error
+          ? err.message
+          : 'No fue posible obtener el detalle de casos para exportar.',
+      position: 'top-right',
+    });
+    return [];
+  } finally {
+    cargando.value = false;
+  }
+}
+
+async function descargarCasosDetallados(): Promise<void> {
+  if (resumen.value.total_tickets === 0) {
     $q.notify({
       type: 'warning',
       message: 'No hay tickets en el período seleccionado para exportar.',
@@ -908,16 +943,18 @@ function descargarCasosDetallados(): void {
     });
     return;
   }
-  exportarListadoDetalladoCsv(ticketsMetricas.value, textoPeriodoExportacion.value);
+  const detalle = await obtenerDetalleParaExportacion();
+  if (!detalle.length) return;
+  exportarListadoDetalladoCsv(detalle, textoPeriodoExportacion.value);
   $q.notify({
     type: 'positive',
-    message: `Exportados ${ticketsMetricas.value.length} casos en CSV compatible con Excel.`,
+    message: `Exportados ${detalle.length} casos en CSV compatible con Excel.`,
     position: 'top-right',
   });
 }
 
-function descargarMatrizTecnicos(): void {
-  if (!ticketsMetricas.value.length) {
+async function descargarMatrizTecnicos(): Promise<void> {
+  if (resumen.value.total_tickets === 0) {
     $q.notify({
       type: 'warning',
       message: 'No hay actividad técnica en el período seleccionado para exportar.',
@@ -925,7 +962,9 @@ function descargarMatrizTecnicos(): void {
     });
     return;
   }
-  exportarMatrizMensualTecnicosCsv(ticketsMetricas.value, textoPeriodoExportacion.value);
+  const detalle = await obtenerDetalleParaExportacion();
+  if (!detalle.length) return;
+  exportarMatrizMensualTecnicosCsv(detalle, textoPeriodoExportacion.value);
   $q.notify({
     type: 'positive',
     message: 'Matriz mensual por técnico descargada en formato CSV.',
@@ -951,14 +990,15 @@ function generarInformePdf(): void {
 async function cargarMetricas(): Promise<void> {
   cargando.value = true;
   errorCarga.value = null;
+  ticketsMetricas.value = [];
   try {
     const resp = await ticketStore.cargarMetricas({
       ...(filtros.fecha_desde ? { fecha_desde: filtros.fecha_desde } : {}),
       ...(filtros.fecha_hasta ? { fecha_hasta: filtros.fecha_hasta } : {}),
       ...(filtros.id_departamento_ti ? { id_departamento_ti: filtros.id_departamento_ti } : {}),
+      incluir_detalle: false,
     });
     resumen.value = resp.resumen;
-    ticketsMetricas.value = resp.tickets;
   } catch (err: unknown) {
     errorCarga.value =
       err instanceof Error ? err.message : 'No fue posible cargar las métricas de SLA.';

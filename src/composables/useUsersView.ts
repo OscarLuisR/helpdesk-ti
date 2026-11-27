@@ -11,6 +11,7 @@ import {
   type User,
   type UserFormPayload,
 } from '@/stores/useUsersStore';
+import { ordenarPorTexto } from '@/utils/ordenarOpciones';
 
 // 🛡️ [FASE 3 - UI USUARIOS] Anchos fijos (100%) para evitar scroll horizontal en escritorio y laptop 960px
 export const COLUMNAS_USUARIOS: QTableColumn<User>[] = [
@@ -101,7 +102,6 @@ const ROL_CHIP_CLASS: Record<string, string> = {
   MESA_TECNICA: 'info',
   GERENTE_AREA: 'warn',
   TECNICO: 'neutral',
-  USUARIO: 'ok',
 };
 
 export function claseChipRol(codigoRol: string): string {
@@ -200,9 +200,13 @@ export function useUsersView() {
   const rolesCatalogo = computed<RolItem[]>(() => rolesStore.roles);
   const departamentosCatalogo = computed<Department[]>(() => departmentsStore.departments);
 
+  // 🛡️ [FASE 3 - UI COMBOS] Roles ordenados A-Z preservando "Todos los roles" arriba
   const opcionesFiltroRol = computed<OpcionFiltroRol[]>(() => [
     { valor: 'TODOS', etiqueta: 'Todos los roles' },
-    ...rolesStore.roles.map((r) => ({ valor: r.id, etiqueta: r.nombre })),
+    ...ordenarPorTexto(
+      rolesStore.roles.map((r) => ({ valor: r.id, etiqueta: r.nombre })),
+      (op) => op.etiqueta,
+    ),
   ]);
 
   const usuariosFiltrados = computed<User[]>(() => {

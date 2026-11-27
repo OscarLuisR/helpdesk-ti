@@ -3,6 +3,7 @@ import { computed, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { CredencialesLogin, ErrorApiBackend } from '@/models/auth';
 import type { RolUsuario } from '@/models/types';
+import { establecerCierreSesionEnCurso } from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
 import { useTicketStore } from '@/stores/ticketStore';
 
@@ -26,7 +27,7 @@ function formatearSegundos(totalSegundos: number): string {
 }
 
 // 🛡️ [FASE 2.3 / 3 - TICKETS] Ruta de aterrizaje real según el rol autenticado (Dashboard principal adaptativo)
-export function rutaInicioPorRol(rol: RolUsuario): string {
+export function rutaInicioPorRol(rol: RolUsuario | null): string {
   switch (rol) {
     case 'ADMINISTRADOR':
       return '/dashboard';
@@ -38,8 +39,6 @@ export function rutaInicioPorRol(rol: RolUsuario): string {
       return '/dashboard';
     case 'DIRECTOR':
       return '/dashboard/ejecutivo';
-    case 'USUARIO':
-      return '/usuario/mis-solicitudes';
     default:
       return '/dashboard';
   }
@@ -121,7 +120,7 @@ export function useAuth() {
         return true;
       }
 
-      await ticketStore.cargarTickets();
+      // 🛡️ [FASE 3.6 - ESCALABILIDAD] Cada vista destino carga su propio corte mensual al montarse (evita descargar histórico completo al autenticar)
       await router.push(rutaInicioPorRol(sesion.rol));
       return true;
     } catch (err: unknown) {
@@ -162,9 +161,13 @@ export function useAuth() {
   }
 
   async function cerrarSesion(): Promise<void> {
-    await authStore.cerrarSesion();
-    ticketStore.limpiarTickets();
-    await router.push('/');
+    try {
+      await authStore.cerrarSesion();
+      ticketStore.limpiarTickets();
+      await router.push('/');
+    } finally {
+      establecerCierreSesionEnCurso(false);
+    }
   }
 
   function limpiarError(): void {

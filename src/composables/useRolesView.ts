@@ -66,7 +66,6 @@ const CHIP_POR_CODIGO: Record<string, string> = {
   GERENTE_AREA: 'warn',
   DIRECTOR: 'warn',
   TECNICO: 'ok',
-  USUARIO: 'neutral',
 };
 
 export function rolCodigoChipClass(codigo: string): string {

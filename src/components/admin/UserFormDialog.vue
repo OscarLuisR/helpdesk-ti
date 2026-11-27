@@ -157,6 +157,7 @@ import { useConfiguracionesStore } from '@/stores/useConfiguracionesStore';
 import { esDepartamentoTI, type Department } from '@/stores/useDepartmentsStore';
 import type { RolItem } from '@/stores/useRolesStore';
 import type { User, UserFormPayload } from '@/stores/useUsersStore';
+import { ordenarPorTexto } from '@/utils/ordenarOpciones';
 
 const $q = useQuasar();
 const configuracionesStore = useConfiguracionesStore();
@@ -191,17 +192,24 @@ const ROLES_TI_PERMITIDOS = new Set<string>([
   'TECNICO',
 ]);
 
+// 🛡️ [FASE 3 - UI COMBOS] Opciones ordenadas alfabéticamente por su descripción visible
 const opcionesDepartamento = computed(() =>
-  props.departamentos.filter(
-    (d) => (d.is_activo && esDepartamentoTI(d)) || d.id === props.usuarioEditar?.id_departamento,
+  ordenarPorTexto(
+    props.departamentos.filter(
+      (d) => (d.is_activo && esDepartamentoTI(d)) || d.id === props.usuarioEditar?.id_departamento,
+    ),
+    (d) => d.nombre,
   ),
 );
 
 const opcionesRol = computed(() =>
-  props.roles.filter(
-    (r) =>
-      (r.is_activo && ROLES_TI_PERMITIDOS.has(r.codigo.trim().toUpperCase())) ||
-      r.id === props.usuarioEditar?.id_rol,
+  ordenarPorTexto(
+    props.roles.filter(
+      (r) =>
+        (r.is_activo && ROLES_TI_PERMITIDOS.has(r.codigo.trim().toUpperCase())) ||
+        r.id === props.usuarioEditar?.id_rol,
+    ),
+    (r) => r.nombre,
   ),
 );
 

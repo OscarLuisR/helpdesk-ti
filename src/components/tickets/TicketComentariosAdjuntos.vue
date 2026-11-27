@@ -323,7 +323,7 @@ const maxAdjuntosTicket = computed(() => configuracionesStore.maxAdjuntosPorTick
 const limiteAdjuntosAlcanzado = computed(
   () => adjuntos.value.length >= maxAdjuntosTicket.value,
 );
-const puedeCrearNotaInterna = computed(() => authStore.role !== 'USUARIO');
+const puedeCrearNotaInterna = computed(() => authStore.isAuthenticated);
 
 async function cargarContenido(): Promise<void> {
   if (!props.ticketId) return;

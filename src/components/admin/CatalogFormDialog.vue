@@ -111,6 +111,7 @@ import { useQuasar, type QForm } from 'quasar';
 import type { ServiceCatalog, ServiceCatalogPayload } from '@/stores/useCatalogStore';
 import { esDepartamentoTI, type Department } from '@/stores/useDepartmentsStore';
 import type { PrioridadItem } from '@/stores/usePrioridadesStore';
+import { ordenarPorTexto } from '@/utils/ordenarOpciones';
 
 const $q = useQuasar();
 const props = defineProps<{
@@ -134,14 +135,21 @@ const formRef = ref<QForm | null>(null);
 const activoToggle = ref(true);
 
 // 🛡️ [FASE 2 - REGLA OPERATIVA TI] Solo departamentos activos del área de TI (tipos 1 y 2) pueden atender servicios del catálogo
+// 🛡️ [FASE 3 - UI COMBOS] Opciones ordenadas alfabéticamente por su descripción visible
 const opcionesDepartamento = computed(() =>
-  props.departamentos.filter(
-    (d) => (d.is_activo && esDepartamentoTI(d)) || d.id === props.servicioEditar?.id_departamento,
+  ordenarPorTexto(
+    props.departamentos.filter(
+      (d) => (d.is_activo && esDepartamentoTI(d)) || d.id === props.servicioEditar?.id_departamento,
+    ),
+    (d) => d.nombre,
   ),
 );
 
 const opcionesPrioridad = computed(() =>
-  props.prioridades.filter((p) => p.is_activo || p.id === props.servicioEditar?.id_prioridad),
+  ordenarPorTexto(
+    props.prioridades.filter((p) => p.is_activo || p.id === props.servicioEditar?.id_prioridad),
+    (p) => p.nombre,
+  ),
 );
 
 watch(

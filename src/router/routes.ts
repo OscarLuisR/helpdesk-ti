@@ -7,7 +7,7 @@ declare module 'vue-router' {
     requiresPasswordChange?: boolean;
     roles?: readonly RolUsuario[];
     // 🛡️ [FASE 2.3 - TICKETS] Contexto de bandeja para adaptar filtros por defecto
-    modoBandeja?: 'recepcion' | 'cierre' | 'gerencia' | 'tecnico' | 'usuario';
+    modoBandeja?: 'recepcion' | 'gerencia' | 'tecnico';
   }
 }
 
@@ -66,12 +66,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: '/tickets/cierre',
-        component: () => import('@/pages/tickets/BandejaTicketsPage.vue'),
-        meta: {
-          requiresAuth: true,
-          roles: ['MESA_TECNICA'],
-          modoBandeja: 'cierre',
-        },
+        redirect: { path: '/tickets/recepcion', query: { estado: 'Resuelto - Por Verificar' } },
       },
       {
         path: '/gerencia/bandeja',
@@ -116,15 +111,6 @@ const routes: RouteRecordRaw[] = [
         meta: {
           requiresAuth: true,
           roles: ['DIRECTOR', 'ADMINISTRADOR', 'MESA_TECNICA'],
-        },
-      },
-      {
-        path: '/usuario/mis-solicitudes',
-        component: () => import('@/pages/tickets/BandejaTicketsPage.vue'),
-        meta: {
-          requiresAuth: true,
-          roles: ['USUARIO'],
-          modoBandeja: 'usuario',
         },
       },
       {

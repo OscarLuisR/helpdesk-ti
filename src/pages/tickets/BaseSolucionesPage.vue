@@ -34,7 +34,7 @@
     <!-- Barra de filtros -->
     <q-card flat bordered class="modern-card q-pa-md q-mb-lg">
       <q-form class="row q-col-gutter-md items-center" @submit.prevent="buscarSoluciones">
-        <div class="col-12 col-md-5">
+        <div :class="esRolAcotadoPorArea ? 'col-12 col-md-5' : 'col-12 col-md-4'">
           <q-input
             v-model="filtros.q"
             outlined
@@ -50,39 +50,39 @@
           </q-input>
         </div>
 
-        <div class="col-12 col-sm-6 col-md-3">
+        <div v-if="!esRolAcotadoPorArea" class="col-12 col-sm-6 col-md-3">
           <q-select
             v-model="filtros.id_departamento_ti"
-            :options="areasTiActivas"
+            :options="opcionesAreasTi"
             option-value="id"
             option-label="nombre"
             emit-value
             map-options
             outlined
             dense
-            clearable
-            label="Sub-Gerencia TI"
-            @update:model-value="buscarSoluciones"
+            options-dense
+            aria-label="Sub-Gerencia TI"
+            @update:model-value="alCambiarAreaTi"
           />
         </div>
 
-        <div class="col-12 col-sm-6 col-md-3">
+        <div :class="esRolAcotadoPorArea ? 'col-12 col-sm-10 col-md-6' : 'col-12 col-sm-6 col-md-4'">
           <q-select
             v-model="filtros.id_catalogo"
-            :options="catalogoFiltradoPorArea"
+            :options="opcionesCatalogoPorArea"
             option-value="id"
             option-label="nombre"
             emit-value
             map-options
             outlined
             dense
-            clearable
-            label="Incidencia del Catálogo"
+            options-dense
+            aria-label="Incidencia del Catálogo"
             @update:model-value="buscarSoluciones"
           />
         </div>
 
-        <div class="col-12 col-md-1">
+        <div :class="esRolAcotadoPorArea ? 'col-12 col-sm-2 col-md-1' : 'col-12 col-md-1'">
           <q-btn
             type="submit"
             unelevated
@@ -99,8 +99,8 @@
 
       <div class="row items-center justify-between q-mt-sm text-caption muted">
         <span class="tabular-nums">
-          <strong class="text-ink">{{ soluciones.length }}</strong>
-          {{ soluciones.length === 1 ? 'solución documentada' : 'soluciones documentadas' }}
+          <strong class="text-ink">{{ totalSoluciones }}</strong>
+          {{ totalSoluciones === 1 ? 'solución documentada' : 'soluciones documentadas' }}
         </span>
         <q-btn
           v-if="tieneFiltrosActivos"
@@ -249,17 +249,32 @@ import { copyToClipboard, useQuasar } from 'quasar';
 import PrioridadBadge from '@/components/common/PrioridadBadge.vue';
 import { ESTADO_CLASS } from '@/composables/useTickets';
 import type { BaseSolucionItem } from '@/models/types';
+import { useAuthStore } from '@/stores/authStore';
 import { useTicketStore } from '@/stores/ticketStore';
 import { useCatalogStore } from '@/stores/useCatalogStore';
 import { useDepartmentsStore } from '@/stores/useDepartmentsStore';
 import { formatearFechaHora } from '@/utils/formatFecha';
+import { ordenarPorTexto } from '@/utils/ordenarOpciones';
 
 const OPCIONES_FILAS_SOLUCIONES: number[] = [3, 5, 10, 15, 20];
 
 const $q = useQuasar();
+const authStore = useAuthStore();
 const ticketStore = useTicketStore();
 const departmentsStore = useDepartmentsStore();
 const catalogStore = useCatalogStore();
+
+const esRolAcotadoPorArea = computed(
+  () =>
+    authStore.role === 'TECNICO' ||
+    authStore.role === 'GERENTE_AREA' ||
+    authStore.role === 'MESA_TECNICA',
+);
+const idDepartamentoPropio = computed(() =>
+  authStore.usuario?.id_departamento !== undefined
+    ? Number(authStore.usuario.id_departamento)
+    : null,
+);
 
 const cargando = ref(false);
 const errorCarga = ref<string | null>(null);
@@ -267,14 +282,17 @@ const soluciones = ref<BaseSolucionItem[]>([]);
 const paginaActual = ref(1);
 const filasPorPagina = ref(5);
 
+// Valor centinela para las opciones "Todas..." (q-select no muestra opciones con valor null)
+const OPCION_TODAS = 0;
+
 const filtros = reactive<{
   q: string | null;
-  id_departamento_ti: number | null;
-  id_catalogo: number | null;
+  id_departamento_ti: number;
+  id_catalogo: number;
 }>({
   q: '',
-  id_departamento_ti: null,
-  id_catalogo: null,
+  id_departamento_ti: OPCION_TODAS,
+  id_catalogo: OPCION_TODAS,
 });
 
 function normalizar(valor: string | null | undefined): string {
@@ -285,64 +303,91 @@ function normalizar(valor: string | null | undefined): string {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
+interface OpcionSelectFiltro {
+  id: number;
+  nombre: string;
+}
+
 const areasTiActivas = computed(() =>
   departmentsStore.departments.filter(
     (d) => d.is_activo && normalizar(d.tipo_departamento) === 'SUB-GERENCIA TI',
   ),
 );
 
+// 🛡️ [FASE 3 - UI COMBOS] Filtros ordenados A-Z por descripción preservando la opción "Todas..." arriba
+const opcionesAreasTi = computed<OpcionSelectFiltro[]>(() => [
+  { id: OPCION_TODAS, nombre: 'Todas las Sub-Gerencias TI' },
+  ...ordenarPorTexto(
+    areasTiActivas.value.map((d) => ({ id: d.id, nombre: d.nombre })),
+    (op) => op.nombre,
+  ),
+]);
+
 const catalogoFiltradoPorArea = computed(() => {
   const activos = catalogStore.serviciosActivos;
-  if (!filtros.id_departamento_ti) return activos;
-  return activos.filter((c) => c.id_departamento === filtros.id_departamento_ti);
+  const idDeptoFiltro = esRolAcotadoPorArea.value
+    ? idDepartamentoPropio.value
+    : filtros.id_departamento_ti;
+  if (!idDeptoFiltro) return activos;
+  return activos.filter((c) => c.id_departamento === idDeptoFiltro);
 });
+
+const opcionesCatalogoPorArea = computed<OpcionSelectFiltro[]>(() => [
+  { id: OPCION_TODAS, nombre: 'Todas las incidencias del catálogo' },
+  ...ordenarPorTexto(
+    catalogoFiltradoPorArea.value.map((c) => ({ id: c.id, nombre: c.nombre })),
+    (op) => op.nombre,
+  ),
+]);
 
 const tieneFiltrosActivos = computed(
   () =>
     Boolean(filtros.q?.trim()) ||
-    filtros.id_departamento_ti !== null ||
-    filtros.id_catalogo !== null,
+    (!esRolAcotadoPorArea.value && filtros.id_departamento_ti !== OPCION_TODAS) ||
+    filtros.id_catalogo !== OPCION_TODAS,
 );
 
-// 🛡️ [FASE 3 - UI BASE SOLUCIONES] Paginación de 3 zonas reactiva
-const totalPaginas = computed(() =>
-  Math.max(1, Math.ceil(soluciones.value.length / filasPorPagina.value)),
-);
+function alCambiarAreaTi(): void {
+  if (
+    filtros.id_catalogo !== OPCION_TODAS &&
+    !catalogoFiltradoPorArea.value.some((c) => c.id === filtros.id_catalogo)
+  ) {
+    filtros.id_catalogo = OPCION_TODAS;
+  }
+  buscarSoluciones();
+}
 
-const solucionesPaginadas = computed(() => {
-  const inicio = (paginaActual.value - 1) * filasPorPagina.value;
-  return soluciones.value.slice(inicio, inicio + filasPorPagina.value);
-});
+// 🛡️ [FASE 4.3 - ESCALABILIDAD] Paginación real server-side desde PostgreSQL (LIMIT/OFFSET + COUNT(*) OVER())
+const totalSoluciones = ref(0);
+const totalPaginas = ref(1);
+
+const solucionesPaginadas = computed(() => soluciones.value);
 
 const textoMostrando = computed(() => {
-  const total = soluciones.value.length;
+  const total = totalSoluciones.value;
   if (total === 0) return 'Mostrando 0 de 0 soluciones';
   const inicio = (paginaActual.value - 1) * filasPorPagina.value + 1;
   const fin = Math.min(paginaActual.value * filasPorPagina.value, total);
   return `Mostrando ${inicio}–${fin} de ${total} soluciones`;
 });
 
-watch(filasPorPagina, () => {
-  paginaActual.value = 1;
-});
-
-watch(totalPaginas, (nuevoMax) => {
-  if (paginaActual.value > nuevoMax) {
-    paginaActual.value = nuevoMax;
-  }
-});
-
-async function buscarSoluciones(): Promise<void> {
+async function cargarPaginaSoluciones(): Promise<void> {
   cargando.value = true;
   errorCarga.value = null;
-  paginaActual.value = 1;
   try {
-    soluciones.value = await ticketStore.cargarBaseSoluciones({
+    const idDeptoEfectivo = esRolAcotadoPorArea.value
+      ? idDepartamentoPropio.value
+      : filtros.id_departamento_ti;
+    const resp = await ticketStore.cargarBaseSolucionesPaginadas({
       ...(filtros.q?.trim() ? { q: filtros.q.trim() } : {}),
-      ...(filtros.id_departamento_ti ? { id_departamento_ti: filtros.id_departamento_ti } : {}),
+      ...(idDeptoEfectivo ? { id_departamento_ti: idDeptoEfectivo } : {}),
       ...(filtros.id_catalogo ? { id_catalogo: filtros.id_catalogo } : {}),
-      limite: 100,
+      page: paginaActual.value,
+      limit: filasPorPagina.value,
     });
+    soluciones.value = resp.data;
+    totalSoluciones.value = resp.pagination.total;
+    totalPaginas.value = resp.pagination.total_pages;
   } catch (err: unknown) {
     errorCarga.value =
       err instanceof Error ? err.message : 'No fue posible consultar la Base de Soluciones.';
@@ -351,11 +396,27 @@ async function buscarSoluciones(): Promise<void> {
   }
 }
 
+function buscarSoluciones(): void {
+  if (paginaActual.value !== 1) {
+    paginaActual.value = 1;
+  } else {
+    void cargarPaginaSoluciones();
+  }
+}
+
+watch(filasPorPagina, () => {
+  buscarSoluciones();
+});
+
+watch(paginaActual, () => {
+  void cargarPaginaSoluciones();
+});
+
 function limpiarFiltros(): void {
   filtros.q = '';
-  filtros.id_departamento_ti = null;
-  filtros.id_catalogo = null;
-  void buscarSoluciones();
+  filtros.id_departamento_ti = OPCION_TODAS;
+  filtros.id_catalogo = OPCION_TODAS;
+  buscarSoluciones();
 }
 
 async function copiarSolucion(item: BaseSolucionItem): Promise<void> {
@@ -385,7 +446,7 @@ onMounted(async () => {
   await Promise.allSettled([
     departmentsStore.cargarDepartamentos(),
     catalogStore.cargarCatalogo(),
-    buscarSoluciones(),
+    cargarPaginaSoluciones(),
   ]);
 });
 </script>

@@ -12,6 +12,7 @@ import {
   useTipoDepartamentosStore,
   type TipoDepartamentoItem,
 } from '@/stores/useTipoDepartamentosStore';
+import { ordenarPorTexto } from '@/utils/ordenarOpciones';
 
 // 🛡️ [FASE 3 - UI DEPARTAMENTOS] Anchos fijos (100%) para evitar scroll horizontal en escritorio y laptop 960px
 export const COLUMNAS_DEPARTAMENTOS: QTableColumn<Department>[] = [
@@ -159,12 +160,16 @@ export function useDepartmentsView() {
     () => tipoDepartamentosStore.tiposDepartamento,
   );
 
+  // 🛡️ [FASE 3 - UI COMBOS] Tipos ordenados A-Z preservando "Todos los tipos" arriba
   const opcionesFiltroTipo = computed<OpcionFiltroTipo[]>(() => [
     { valor: 'TODOS', etiqueta: 'Todos los tipos' },
-    ...tipoDepartamentosStore.tiposDepartamento.map((t) => ({
-      valor: t.id,
-      etiqueta: t.nombre,
-    })),
+    ...ordenarPorTexto(
+      tipoDepartamentosStore.tiposDepartamento.map((t) => ({
+        valor: t.id,
+        etiqueta: t.nombre,
+      })),
+      (op) => op.etiqueta,
+    ),
   ]);
 
   const tipoFiltroActivo = computed<TipoDepartamentoItem | null>(() => {

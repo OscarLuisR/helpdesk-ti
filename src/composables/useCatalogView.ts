@@ -10,6 +10,7 @@ import {
 } from '@/stores/useCatalogStore';
 import { esDepartamentoTI, useDepartmentsStore, type Department } from '@/stores/useDepartmentsStore';
 import { usePrioridadesStore, type PrioridadItem } from '@/stores/usePrioridadesStore';
+import { ordenarPorTexto } from '@/utils/ordenarOpciones';
 
 // 🛡️ [FASE 3 - UI CATÁLOGO] Anchos fijos proporcionales (100%) con botones solo-ícono (Opción A)
 export const COLUMNAS_CATALOGO: QTableColumn<ServiceCatalog>[] = [
@@ -119,22 +120,29 @@ export function useCatalogView() {
   const prioridadesCatalogo = computed<PrioridadItem[]>(() => prioridadesStore.prioridades);
 
   // 🛡️ [FASE 2 - REGLA OPERATIVA TI] Solo departamentos del área de TI (tipos 1 y 2) y sin prefijo de código
+  // 🛡️ [FASE 3 - UI COMBOS] Opciones ordenadas A-Z preservando "Todos/Todas..." arriba
   const opcionesFiltroDepartamento = computed<OpcionSelectCatalogo[]>(() => [
     { valor: 'TODAS', etiqueta: 'Todos los departamentos' },
-    ...departmentsStore.departments
-      .filter((d) => esDepartamentoTI(d))
-      .map((d) => ({
-        valor: d.id,
-        etiqueta: d.nombre,
-      })),
+    ...ordenarPorTexto(
+      departmentsStore.departments
+        .filter((d) => esDepartamentoTI(d))
+        .map((d) => ({
+          valor: d.id,
+          etiqueta: d.nombre,
+        })),
+      (op) => op.etiqueta,
+    ),
   ]);
 
   const opcionesFiltroPrioridad = computed<OpcionSelectCatalogo[]>(() => [
     { valor: 'TODAS', etiqueta: 'Todas las prioridades' },
-    ...prioridadesStore.prioridades.map((p) => ({
-      valor: p.id,
-      etiqueta: p.nombre,
-    })),
+    ...ordenarPorTexto(
+      prioridadesStore.prioridades.map((p) => ({
+        valor: p.id,
+        etiqueta: p.nombre,
+      })),
+      (op) => op.etiqueta,
+    ),
   ]);
 
   const serviciosFiltrados = computed(() => {

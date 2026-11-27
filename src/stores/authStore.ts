@@ -8,6 +8,7 @@ import type {
 import type { RolUsuario } from '@/models/types';
 import {
   api,
+  establecerCierreSesionEnCurso,
   registrarCallbacksSesionAuth,
   type ConfiguracionPeticionExtendida,
 } from '@/services/api';
@@ -18,7 +19,6 @@ const ROLES_VALIDOS: readonly RolUsuario[] = [
   'GERENTE_AREA',
   'TECNICO',
   'DIRECTOR',
-  'USUARIO',
 ];
 
 function normalizarRolSistema(codigoRol?: string, rolNombre?: string): RolUsuario {
@@ -26,7 +26,7 @@ function normalizarRolSistema(codigoRol?: string, rolNombre?: string): RolUsuari
   if (ROLES_VALIDOS.includes(candidato as RolUsuario)) {
     return candidato as RolUsuario;
   }
-  return 'USUARIO';
+  throw new Error('El rol de la cuenta no está habilitado para operar en HelpDesk TI.');
 }
 
 export function mapearPayloadASesion(payload: PayloadUsuarioBackend): UsuarioSesion {
@@ -66,7 +66,7 @@ function redirigirALoginNavegador(): void {
 
 interface AuthState {
   usuario: UsuarioSesion | null;
-  role: RolUsuario;
+  role: RolUsuario | null;
   /** Indica si ya se verificó la sesión inicial contra `GET /auth/me` tras cargar o recargar la SPA. */
   hidratado: boolean;
 }
@@ -76,13 +76,13 @@ let promesaHidratacionEnCurso: Promise<UsuarioSesion | null> | null = null;
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     usuario: null,
-    role: 'USUARIO',
+    role: null,
     hidratado: false,
   }),
 
   getters: {
     isAuthenticated: (state): boolean => state.usuario !== null,
-    rolActual: (state): RolUsuario => state.role,
+    rolActual: (state): RolUsuario | null => state.role,
     requiereCambioContrasena: (state): boolean => state.usuario?.is_new_user === true,
   },
 
@@ -111,7 +111,7 @@ export const useAuthStore = defineStore('auth', {
 
     limpiarEstadoLocal(): void {
       this.usuario = null;
-      this.role = 'USUARIO';
+      this.role = null;
       this.hidratado = true;
     },
 
@@ -122,6 +122,7 @@ export const useAuthStore = defineStore('auth', {
      */
     async hidratarSesion(forzar = false): Promise<UsuarioSesion | null> {
       this.inicializarInterceptores();
+      establecerCierreSesionEnCurso(false);
 
       if (this.hidratado && !forzar) {
         return this.usuario;
@@ -154,6 +155,7 @@ export const useAuthStore = defineStore('auth', {
 
     async autenticar(credenciales: CredencialesLogin): Promise<UsuarioSesion> {
       this.inicializarInterceptores();
+      establecerCierreSesionEnCurso(false);
       const nickNormalizado = credenciales.username.trim();
 
       const { data: respuesta } = await api.post<RespuestaApi<PayloadUsuarioBackend>>(
@@ -169,6 +171,7 @@ export const useAuthStore = defineStore('auth', {
 
     async cerrarSesion(): Promise<void> {
       this.inicializarInterceptores();
+      establecerCierreSesionEnCurso(true);
       try {
         await api.post('/auth/logout');
       } catch {

@@ -11,7 +11,7 @@
 
         <h1>Actualiza tu contraseña</h1>
         <p class="sub">
-          Hola<template v-if="nombreMostrado">, <strong>{{ nombreMostrado }}</strong></template>.
+          <span>Hola</span><span v-if="nombreMostrado">, <strong>{{ nombreMostrado }}</strong></span><span>.</span>
           Por seguridad, debes reemplazar tu contraseña temporal antes de ingresar al sistema.
         </p>
 
